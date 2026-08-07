@@ -17,7 +17,8 @@ import (
 	"magicproxy/internal/updater"
 )
 
-const hostVersion = "0.1.0"
+// Overridden at build time by CI: -ldflags "-X main.hostVersion=<tag>".
+var hostVersion = "0.0.0-dev"
 
 type startPayload struct {
 	Profile  config.Profile `json:"profile"`

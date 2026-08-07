@@ -7,7 +7,10 @@
 ; Silent install:  MagicProxy-Setup.exe /VERYSILENT /SUPPRESSMSGBOXES
 
 #define AppName "MagicProxy"
-#define AppVersion "0.1.0"
+; CI passes the tag: ISCC /DAppVersion=1.2.3 . The default is only for local builds.
+#ifndef AppVersion
+  #define AppVersion "0.0.0"
+#endif
 #define HostName "com.magicproxy.host"
 
 [Setup]
