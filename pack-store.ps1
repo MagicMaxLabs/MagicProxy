@@ -4,7 +4,7 @@
 
 .DESCRIPTION
   Copies extension/ to a temp folder, drops dev-only tooling, removes the "key"
-  field (CWS assigns its own ID), and zips the result. See docs/CHROME_WEB_STORE.md.
+  field (CWS assigns its own ID), and zips the result.
 #>
 $ErrorActionPreference = "Stop"
 $Root = $PSScriptRoot
