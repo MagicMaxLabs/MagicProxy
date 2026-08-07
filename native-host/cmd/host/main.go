@@ -8,9 +8,11 @@ import (
 	"errors"
 	"io"
 	"os"
+	"strings"
 
 	"magicproxy/internal/config"
 	"magicproxy/internal/core"
+	"magicproxy/internal/diag"
 	"magicproxy/internal/messaging"
 	"magicproxy/internal/updater"
 )
@@ -35,8 +37,28 @@ func main() {
 	}
 
 	// Forward sing-box logs and exit events to the extension.
+	//
+	// When a failure looks like another client's TUN mode capturing our own
+	// outbound connection, append a plain-language explanation. The core's message
+	// ("reality verification failed") is accurate but gives the user no way to
+	// guess the real cause, and this is a common setup: our audience frequently
+	// already runs Clash/Hiddify/v2rayN.
+	hintedThisRun := false
 	mgr.OnLog = func(level, line string) {
 		_ = conn.Emit("log", map[string]any{"level": level, "line": line})
+		if hintedThisRun || !diag.LooksLikeDoubleProxying(line) {
+			return
+		}
+		if adapters := diag.ActiveTunnelAdapters(); len(adapters) > 0 {
+			hintedThisRun = true
+			_ = conn.Emit("log", map[string]any{
+				"level": "error",
+				"line": "MagicProxy: обнаружен активный TUN-адаптер (" + strings.Join(adapters, ", ") +
+					"). Другой прокси-клиент перехватывает весь трафик системы, включая наше " +
+					"соединение с твоим сервером — из-за двойного проксирования проверка не проходит. " +
+					"Переключи тот клиент в обычный режим прокси или добавь адрес твоего сервера в его обход.",
+			})
+		}
 	}
 	mgr.OnExit = func(err error) {
 		payload := map[string]any{"running": false}
