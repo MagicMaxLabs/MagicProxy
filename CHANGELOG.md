@@ -31,6 +31,9 @@ First public release.
   resolver.
 - The proxy is fail-closed: if the background component dies, the browser profile
   loses connectivity rather than silently reverting to a direct connection.
+- The networking core is bound to the background component through a Windows job
+  object, so it is torn down even when that component is killed outright and can
+  never be left running with a stale configuration.
 - The extension verifies that it actually controls the browser's proxy setting and
   refuses to report an active tunnel when another extension has taken precedence.
 

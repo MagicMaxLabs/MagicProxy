@@ -30,6 +30,16 @@ type startPayload struct {
 func main() {
 	conn := messaging.NewConn(os.Stdin, os.Stdout)
 
+	// Before anything is spawned: make the operating system responsible for
+	// killing sing-box when this host dies. Stop() only covers the orderly exits.
+	if err := core.ConfineChildren(); err != nil {
+		_ = conn.Emit("log", map[string]any{
+			"level": "warn",
+			"line": "MagicProxy: не удалось привязать ядро к процессу хоста (" + err.Error() +
+				"). Если хост завершится аварийно, sing-box может остаться в памяти.",
+		})
+	}
+
 	mgr, err := core.NewManager()
 	if err != nil {
 		// We can still speak the protocol; report the failure on first request.
