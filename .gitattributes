@@ -1,0 +1,15 @@
+# Normalise line endings in the repository so contributors on different machines
+# do not produce diffs full of lines nobody touched.
+* text=auto eol=lf
+
+# Windows-native formats that must keep CRLF in the working copy.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.iss text eol=crlf
+
+# Binary — never touch, never diff.
+*.png binary
+*.exe binary
+*.zip binary
+*.ico binary
