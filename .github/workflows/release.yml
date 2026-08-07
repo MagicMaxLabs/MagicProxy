@@ -98,8 +98,12 @@ jobs:
           $d = "dist/MagicProxy"
           New-Item -ItemType Directory -Force -Path "$d/vendor-bin" | Out-Null
           Copy-Item -Recurse extension "$d/extension"
-          Copy-Item setup.ps1, setup.bat, uninstall.bat, README.md, LICENSE "$d/"
-          Copy-Item -Recurse docs "$d/docs"
+          Copy-Item setup.ps1, setup.bat, uninstall.bat, README.md, LICENSE, SECURITY.md, PRIVACY.md "$d/"
+          # Only the documents a user of the bundle actually needs. This used to copy
+          # docs/ wholesale, which shipped the release checklist, the go-to-market
+          # plan and the internal state notes to everyone who downloaded the zip.
+          New-Item -ItemType Directory -Force -Path "$d/docs" | Out-Null
+          Copy-Item docs/HOW-IT-WORKS.md "$d/docs/"
           # GPLv3 §6: the licence text and source pointer travel with the binary.
           Copy-Item -Recurse third-party "$d/third-party"
           Copy-Item "vendor-bin/magicproxy-host.exe", "vendor-bin/sing-box.exe" "$d/vendor-bin/"
