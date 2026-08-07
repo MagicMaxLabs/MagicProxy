@@ -101,9 +101,11 @@ jobs:
           $lines | Out-File -FilePath SHA256SUMS.txt -Encoding ascii
           Get-Content SHA256SUMS.txt
 
-      # Cryptographic build provenance, free for public repos. Users verify with:
-      #   gh attestation verify <file> --repo magicmaxlabs/MagicProxy
+      # Cryptographic build provenance. On the Free plan this is available for
+      # PUBLIC repositories only, so it is skipped while the repo is private —
+      # otherwise the whole release job would fail on a test tag.
       - name: Attest build provenance
+        if: ${{ !github.event.repository.private }}
         uses: actions/attest-build-provenance@v1
         with:
           subject-path: |
