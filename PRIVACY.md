@@ -67,4 +67,4 @@ notes, and this date will be updated.
 
 ## Contact
 
-**magicmaxlabs@gmail.com** · https://github.com/magicmaxlabs/MagicProxy/issues
+**magicmaxlabs@gmail.com** · https://github.com/MagicMaxLabs/MagicProxy/issues

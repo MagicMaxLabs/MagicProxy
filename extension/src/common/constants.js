@@ -22,12 +22,12 @@ export const NATIVE_HOST_NAME = "com.magicproxy.host";
 export const DOWNLOAD_MIRRORS = [
   {
     label: "GitHub",
-    url: "https://github.com/magicmaxlabs/MagicProxy/releases/latest/download/MagicProxy-Setup.exe",
+    url: "https://github.com/MagicMaxLabs/MagicProxy/releases/latest/download/MagicProxy-Setup.exe",
   },
 ];
 
 // Release page, for checksums and older versions.
-export const RELEASES_URL = "https://github.com/magicmaxlabs/MagicProxy/releases/latest";
+export const RELEASES_URL = "https://github.com/MagicMaxLabs/MagicProxy/releases/latest";
 
 // chrome.storage.local keys
 export const STORAGE_KEYS = {

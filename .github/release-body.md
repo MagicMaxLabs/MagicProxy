@@ -21,7 +21,7 @@ Every binary is built in public GitHub Actions CI from the tagged commit and sig
 with build provenance. If you have the GitHub CLI:
 
 ```
-gh attestation verify MagicProxy-Setup.exe --repo magicmaxlabs/MagicProxy
+gh attestation verify MagicProxy-Setup.exe --repo MagicMaxLabs/MagicProxy
 ```
 
 ### Windows SmartScreen

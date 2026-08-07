@@ -34,4 +34,4 @@ First public release.
 - The extension verifies that it actually controls the browser's proxy setting and
   refuses to report an active tunnel when another extension has taken precedence.
 
-[0.1.0]: https://github.com/magicmaxlabs/MagicProxy/releases/tag/v0.1.0
+[0.1.0]: https://github.com/MagicMaxLabs/MagicProxy/releases/tag/v0.1.0

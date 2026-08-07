@@ -72,7 +72,7 @@ Compare against `SHA256SUMS.txt` in the release. With the GitHub CLI you can als
 verify provenance cryptographically:
 
 ```
-gh attestation verify MagicProxy-Setup.exe --repo magicmaxlabs/MagicProxy
+gh attestation verify MagicProxy-Setup.exe --repo MagicMaxLabs/MagicProxy
 ```
 
 **The installer is not code-signed.** Windows SmartScreen will warn on it. Code

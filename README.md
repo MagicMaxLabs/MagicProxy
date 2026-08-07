@@ -5,9 +5,9 @@
 **Прокси не для всего компьютера, а для одного профиля браузера.**
 
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
-[![Release](https://img.shields.io/github/v/release/magicmaxlabs/MagicProxy)](https://github.com/magicmaxlabs/MagicProxy/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/magicmaxlabs/MagicProxy/total)](https://github.com/magicmaxlabs/MagicProxy/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/magicmaxlabs/MagicProxy/release.yml)](https://github.com/magicmaxlabs/MagicProxy/actions)
+[![Release](https://img.shields.io/github/v/release/MagicMaxLabs/MagicProxy)](https://github.com/MagicMaxLabs/MagicProxy/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/MagicMaxLabs/MagicProxy/total)](https://github.com/MagicMaxLabs/MagicProxy/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/MagicMaxLabs/MagicProxy/release.yml)](https://github.com/MagicMaxLabs/MagicProxy/actions)
 
 </div>
 
@@ -32,7 +32,7 @@ MagicProxy — один профиль браузера, и спокойно у�
 
 ## Установка
 
-1. Скачай **[MagicProxy-Setup.exe](https://github.com/magicmaxlabs/MagicProxy/releases/latest)**
+1. Скачай **[MagicProxy-Setup.exe](https://github.com/MagicMaxLabs/MagicProxy/releases/latest)**
    и запусти. Внутри уже всё есть — сетевое ядро включено, интернет для установки не
    нужен, права администратора тоже.
 2. Добавь расширение в браузер *(в Chrome Web Store на модерации — пока ставится
@@ -95,7 +95,7 @@ Get-FileHash .\MagicProxy-Setup.exe -Algorithm SHA256
 помеченного коммита, с криптографическим подтверждением происхождения:
 
 ```
-gh attestation verify MagicProxy-Setup.exe --repo magicmaxlabs/MagicProxy
+gh attestation verify MagicProxy-Setup.exe --repo MagicMaxLabs/MagicProxy
 ```
 
 ## Совместимость с другими клиентами
