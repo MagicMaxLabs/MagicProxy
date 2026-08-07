@@ -1,0 +1,122 @@
+name: Release
+
+# Push a tag like v0.1.0 to build the host, bundle sing-box, compile the
+# installer, and publish everything to GitHub Releases.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  # Required by actions/attest-build-provenance to sign via Sigstore.
+  id-token: write
+  attestations: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Build native host
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path vendor-bin | Out-Null
+          Push-Location native-host
+          go build -o ../vendor-bin/magicproxy-host.exe ./cmd/host
+          Pop-Location
+
+      # The version is PINNED, not "latest". Two reasons: a floating core silently
+      # changes what we ship, and GPLv3 §6 requires offering the source for the exact
+      # version conveyed — which is impossible if the version drifts per build.
+      - name: Download pinned sing-box core
+        shell: pwsh
+        run: |
+          $tag = (Get-Content third-party/sing-box/VERSION -Raw).Trim()
+          Write-Host "Pinned sing-box: $tag"
+          $headers = @{ "User-Agent" = "MagicProxy-CI" }
+          $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/SagerNet/sing-box/releases/tags/$tag" -Headers $headers
+          $asset = $rel.assets | Where-Object { $_.name -match "windows-amd64\.zip$" -and $_.name -notmatch "legacy" } | Select-Object -First 1
+          if (-not $asset) { throw "No windows-amd64 asset for sing-box $tag" }
+          $zip = "$env:TEMP/sing-box.zip"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -Headers $headers
+          $tmp = "$env:TEMP/sb"
+          Expand-Archive -Path $zip -DestinationPath $tmp -Force
+          $exe = Get-ChildItem -Path $tmp -Recurse -Filter "sing-box.exe" | Select-Object -First 1
+          Copy-Item $exe.FullName -Destination "vendor-bin/sing-box.exe" -Force
+          # Fail loudly if the binary does not report the version we pinned.
+          $reported = (& "vendor-bin/sing-box.exe" version | Select-Object -First 1)
+          Write-Host "Reported: $reported"
+          if ($reported -notmatch [regex]::Escape($tag.TrimStart('v'))) {
+            throw "sing-box reports '$reported' but $tag was pinned"
+          }
+
+      - name: Compile Inno Setup installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\magicproxy.iss
+
+      - name: Assemble portable bundle (zip)
+        shell: pwsh
+        run: |
+          $d = "dist/MagicProxy"
+          New-Item -ItemType Directory -Force -Path "$d/vendor-bin" | Out-Null
+          Copy-Item -Recurse extension "$d/extension"
+          Copy-Item setup.ps1, setup.bat, uninstall.bat, README.md, LICENSE "$d/"
+          Copy-Item -Recurse docs "$d/docs"
+          # GPLv3 §6: the licence text and source pointer travel with the binary.
+          Copy-Item -Recurse third-party "$d/third-party"
+          Copy-Item "vendor-bin/magicproxy-host.exe", "vendor-bin/sing-box.exe" "$d/vendor-bin/"
+          # Do not ship private keys or dev-only tooling.
+          if (Test-Path "$d/extension/tools") { Remove-Item -Recurse -Force "$d/extension/tools" }
+          # Build the zip with forward-slash entry names (Compress-Archive on Windows
+          # PowerShell writes backslashes, which is not what the ZIP spec mandates).
+          Add-Type -AssemblyName System.IO.Compression
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $out = (Resolve-Path .).Path + "\MagicProxy-windows-amd64.zip"
+          if (Test-Path $out) { Remove-Item $out -Force }
+          $zip = [System.IO.Compression.ZipFile]::Open($out, [System.IO.Compression.ZipArchiveMode]::Create)
+          try {
+            $base = (Resolve-Path $d).Path
+            Get-ChildItem -Recurse -File $base | ForEach-Object {
+              $rel = $_.FullName.Substring($base.Length + 1) -replace '\\', '/'
+              [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $rel) | Out-Null
+            }
+          } finally { $zip.Dispose() }
+
+      - name: Generate checksums
+        shell: pwsh
+        run: |
+          $files = @("installer/Output/MagicProxy-Setup.exe", "MagicProxy-windows-amd64.zip")
+          $lines = foreach ($f in $files) {
+            $h = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
+            "$h  $(Split-Path $f -Leaf)"
+          }
+          $lines | Out-File -FilePath SHA256SUMS.txt -Encoding ascii
+          Get-Content SHA256SUMS.txt
+
+      # Cryptographic build provenance, free for public repos. Users verify with:
+      #   gh attestation verify <file> --repo magicmaxlabs/MagicProxy
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: |
+            installer/Output/MagicProxy-Setup.exe
+            MagicProxy-windows-amd64.zip
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer/Output/MagicProxy-Setup.exe
+            MagicProxy-windows-amd64.zip
+            SHA256SUMS.txt
+          generate_release_notes: true
+          body_path: .github/release-body.md
+          append_body: true

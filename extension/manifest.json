@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "MagicProxy — per-profile proxy for your own server",
+  "short_name": "MagicProxy",
+  "version": "0.1.0",
+  "description": "Route one browser profile through your own proxy server. Other profiles and the rest of your system stay direct.",
+  "minimum_chrome_version": "116",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApMfTKTo1xLhhVEgxQw/CZQPFlkjcQJziVbqSPxr7rPcIlsL4c6L8EQ+KoZ/J3iI544cKtFRjIpBNPDaoPl/Cr9CaiItXwxUdG4ardBQGMd/eA2stg+MupVpjDH/NqJXGg5VA+TbOk8T2jlAyAZHh9HkWZOGZAegjl+UfA+ZHFHq+JeQQEbIlfLgVjS2+xQmh1DQyaEInli8MguGI/k+gjVVXPQVwknkBaJ3u3t3Rdwae16Ap+J3WIZxWFNEvn7oCM43LS0zMKqmYF6OK1Em3SnX6agLFr4QV8xQzOpeCHdAFmA0hM3fLzXkFtl4r/NuSeA3xGBlRqADVtAju1hEKbQIDAQAB",
+  "permissions": [
+    "proxy",
+    "storage",
+    "nativeMessaging",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "MagicProxy",
+    "default_popup": "src/popup/popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "32": "assets/icon32.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "options_page": "src/options/options.html",
+  "icons": {
+    "16": "assets/icon16.png",
+    "32": "assets/icon32.png",
+    "128": "assets/icon128.png"
+  }
+}

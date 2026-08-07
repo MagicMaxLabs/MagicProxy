@@ -1,0 +1,76 @@
+:root {
+  --bg: #14161c;
+  --panel: #1c1f28;
+  --text: #e6e8ee;
+  --muted: #8b90a0;
+  --accent: #6c5ce7;
+  --on: #2ecc71;
+  --err: #ff6b6b;
+  --border: #2a2e3a;
+}
+* { box-sizing: border-box; }
+body {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 20px 60px;
+  font: 14px/1.5 system-ui, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+h1 { font-size: 20px; margin: 0 0 20px; }
+h2 { font-size: 15px; margin: 0 0 10px; color: var(--text); }
+section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.hint { color: var(--muted); font-size: 12px; }
+textarea, input, select {
+  width: 100%;
+  background: #0f1116;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  font: inherit;
+}
+textarea { font-family: ui-monospace, Consolas, monospace; font-size: 12px; resize: vertical; }
+.row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.row label { min-width: 80px; color: var(--muted); }
+.row select { width: auto; flex: 1; }
+.actions { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font: inherit;
+}
+button.secondary { background: var(--off, #3a3f4c); }
+button:hover { filter: brightness(1.1); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+th { color: var(--muted); font-weight: 500; font-size: 12px; }
+td .link { color: var(--accent); cursor: pointer; margin-right: 10px; }
+td .danger { color: var(--err); }
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.6);
+  display: flex; align-items: center; justify-content: center;
+}
+.overlay.hidden { display: none; }
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  width: 620px;
+  max-width: 92vw;
+}
+.modal h3 { margin: 0 0 10px; }
+.ok { color: var(--on); }
+.bad { color: var(--err); }

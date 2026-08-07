@@ -1,0 +1,31 @@
+# Binaries — shipped via GitHub Releases, never committed
+vendor-bin/*.exe
+vendor-bin/sing-box*
+vendor-bin/com.magicproxy.host.json
+*.exe
+
+# Build outputs
+installer/Output/
+dist/
+MagicProxy-extension-store.zip
+MagicProxy-windows-amd64.zip
+SHA256SUMS.txt
+native-host/bin/
+
+# Private signing key — NEVER commit.
+# NOTE: since the Chrome Web Store issued the item's key, extension/manifest.json's
+# "key" field is the store's PUBLIC key and is committed on purpose. The keys/
+# directory only holds the now-superseded self-generated pair.
+keys/
+
+# Node
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# Scratch
+tmp-*/
+.dnstest/

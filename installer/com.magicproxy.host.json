@@ -1,0 +1,9 @@
+{
+  "name": "com.magicproxy.host",
+  "description": "MagicProxy native messaging host",
+  "path": "magicproxy-host.exe",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://gpkpglcfdlodjbabgjackonmfpemaomg/"
+  ]
+}

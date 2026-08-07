@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="options.css" />
+    <title>MagicProxy — настройки</title>
+  </head>
+  <body>
+    <h1>🪄 MagicProxy</h1>
+
+    <section>
+      <h2>Импорт</h2>
+      <p class="hint">
+        Вставьте одну или несколько ссылок (vless://, vmess://, trojan://, ss://,
+        hysteria2://, tuic://) — по одной на строку — или base64-подписку.
+      </p>
+      <textarea id="importBox" rows="4" placeholder="vless://…"></textarea>
+      <div class="actions">
+        <button id="importBtn">Импортировать</button>
+        <span id="importResult" class="hint"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Профили</h2>
+      <table id="profileTable">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Имя</th>
+            <th>Тип</th>
+            <th>Сервер</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="profileBody"></tbody>
+      </table>
+      <div class="actions">
+        <button id="addBtn">+ Новый профиль (JSON)</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Маршрутизация</h2>
+      <div class="row">
+        <label>Режим</label>
+        <select id="routingMode">
+          <option value="all">Весь трафик через прокси</option>
+          <option value="rules">По правилам (PAC)</option>
+        </select>
+      </div>
+      <div id="rulesFields">
+        <label class="hint">Через прокси только эти домены (по одному на строку; пусто = всё кроме direct-списка):</label>
+        <textarea id="proxyDomains" rows="3" placeholder="example.com&#10;*.youtube.com"></textarea>
+        <label class="hint">Всегда напрямую (bypass):</label>
+        <textarea id="directDomains" rows="3" placeholder="*.ru&#10;localhost"></textarea>
+      </div>
+      <div class="actions">
+        <button id="saveRoutingBtn">Сохранить маршрутизацию</button>
+        <span id="routingResult" class="hint"></span>
+      </div>
+    </section>
+
+    <section>
+      <h2>Обновления ядра</h2>
+      <p class="hint">Ядро sing-box отвечает за все протоколы. Держи его свежим.</p>
+      <div class="actions">
+        <button id="checkUpdateBtn">Проверить обновления</button>
+        <button id="updateCoreBtn" class="secondary" disabled>Обновить ядро</button>
+        <span id="updateResult" class="hint"></span>
+      </div>
+    </section>
+
+    <!-- JSON editor modal -->
+    <div id="editorOverlay" class="overlay hidden">
+      <div class="modal">
+        <h3 id="editorTitle">Профиль</h3>
+        <div class="row">
+          <label for="editorType">Шаблон</label>
+          <select id="editorType">
+            <option value="">— вставить шаблон типа —</option>
+            <option value="vless">VLESS + Reality</option>
+            <option value="vless-ws">VLESS + WS + TLS</option>
+            <option value="vmess">VMess</option>
+            <option value="trojan">Trojan</option>
+            <option value="shadowsocks">Shadowsocks</option>
+            <option value="shadowtls">Shadowsocks + ShadowTLS</option>
+            <option value="hysteria2">Hysteria2</option>
+            <option value="hysteria">Hysteria v1</option>
+            <option value="tuic">TUIC</option>
+            <option value="anytls">AnyTLS</option>
+            <option value="wireguard">WireGuard</option>
+            <option value="ssh">SSH</option>
+            <option value="socks">SOCKS5 / SOCKS4</option>
+            <option value="http">HTTP / HTTPS прокси</option>
+          </select>
+        </div>
+        <textarea id="editorJson" rows="18" spellcheck="false"></textarea>
+        <div class="actions">
+          <button id="editorTest">Проверить конфиг</button>
+          <button id="editorSave">Сохранить</button>
+          <button id="editorCancel" class="secondary">Отмена</button>
+          <span id="editorResult" class="hint"></span>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

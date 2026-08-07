@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
+    <title>MagicProxy</title>
+  </head>
+  <body>
+    <header>
+      <span class="logo">🪄 MagicProxy</span>
+      <span id="hostStatus" class="pill pill--muted" title="Native host">host…</span>
+    </header>
+
+    <main>
+      <button id="hostBanner" class="banner hidden"></button>
+
+      <div class="row">
+        <label for="profileSelect">Профиль</label>
+        <select id="profileSelect"></select>
+      </div>
+
+      <!-- Starts disabled: until intent is read from storage the label would be
+           wrong, and clicking would fire enable() at a user who wanted off. -->
+      <button id="toggleBtn" class="toggle toggle--off" disabled>Включить</button>
+
+      <div id="statusLine" class="status status--off">Выключено</div>
+
+      <details class="logs">
+        <summary>Логи ядра</summary>
+        <pre id="logView"></pre>
+      </details>
+    </main>
+
+    <footer>
+      <a id="optionsLink" href="#">Профили и настройки →</a>
+    </footer>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

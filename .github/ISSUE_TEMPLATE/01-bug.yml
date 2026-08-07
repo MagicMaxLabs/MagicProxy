@@ -1,0 +1,63 @@
+name: Bug report
+description: Something does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you paste anything: remove your server address, UUID, password and keys.**
+        Logs and profiles contain credentials.
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options:
+        - Brave
+        - Chrome
+        - Edge
+        - Vivaldi
+        - Other Chromium
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Extension version, installer version, Windows build
+      placeholder: "ext 0.1.0 / setup 0.1.0 / Windows 11 26200"
+    validations:
+      required: true
+  - type: dropdown
+    id: protocol
+    attributes:
+      label: Protocol
+      options:
+        - VLESS
+        - VLESS + REALITY
+        - VMess
+        - Trojan
+        - Shadowsocks
+        - Shadowsocks + ShadowTLS
+        - Hysteria2
+        - Hysteria
+        - TUIC
+        - AnyTLS
+        - WireGuard
+        - SSH
+        - SOCKS5 / SOCKS4
+        - HTTP / HTTPS proxy
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Core log
+      description: "Popup → «Логи ядра». REDACT your server address and credentials."
+      render: text

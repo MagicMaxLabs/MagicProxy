@@ -1,0 +1,160 @@
+:root {
+  --bg: #14161c;
+  --panel: #1c1f28;
+  --text: #e6e8ee;
+  --muted: #8b90a0;
+  --accent: #6c5ce7;
+  --on: #2ecc71;
+  --off: #4a4f5e;
+  --err: #ff6b6b;
+  --border: #2a2e3a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 300px;
+  margin: 0;
+  font: 13px/1.4 system-ui, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo {
+  font-weight: 600;
+}
+
+.pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--off);
+  color: #fff;
+}
+.pill--ok {
+  background: var(--on);
+}
+.pill--muted {
+  background: var(--off);
+  color: var(--muted);
+}
+.pill--err {
+  background: var(--err);
+}
+
+main {
+  padding: 12px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.row label {
+  color: var(--muted);
+  min-width: 54px;
+}
+select {
+  flex: 1;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.banner {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 9px 10px;
+  border: 1px solid var(--err);
+  border-radius: 6px;
+  background: rgba(255, 107, 107, 0.12);
+  color: var(--err);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.banner:hover {
+  background: rgba(255, 107, 107, 0.2);
+}
+.hidden {
+  display: none;
+}
+
+.toggle {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: #fff;
+  transition: background 0.15s;
+}
+.toggle--off {
+  background: var(--accent);
+}
+.toggle--on {
+  background: var(--off);
+}
+.toggle:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.status {
+  margin-top: 10px;
+  text-align: center;
+  color: var(--muted);
+}
+.status--on {
+  color: var(--on);
+}
+.status--err {
+  color: var(--err);
+}
+
+.logs {
+  margin-top: 12px;
+}
+.logs summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+#logView {
+  max-height: 140px;
+  overflow: auto;
+  background: #0f1116;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin: 8px 0 0;
+  font: 11px/1.35 ui-monospace, Consolas, monospace;
+  white-space: pre-wrap;
+  color: var(--muted);
+}
+
+footer {
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
