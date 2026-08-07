@@ -22,6 +22,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.22"
+          # The host has no third-party dependencies, so there is no go.sum and
+          # nothing to cache. Without this, every run logs a "cache failed" warning.
+          cache: false
 
       # Everything downstream stamps this version, so it is derived once, here.
       # Without it every release reported 0.1.0 — and the Chrome Web Store rejects

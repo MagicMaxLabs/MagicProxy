@@ -18,6 +18,7 @@ import {
 } from "../common/constants.js";
 import { native, onEvent, disconnect } from "../lib/native.js";
 import * as proxy from "../lib/proxy.js";
+import { setStatusIcon, pulseConnecting } from "../lib/badge.js";
 import { getProfile, getActiveProfileId, getRouting } from "../lib/profiles.js";
 
 // Only logs + lastError are truly volatile; running state lives in storage.
@@ -50,16 +51,15 @@ async function persistRuntime(running, port) {
   });
 }
 
-// --- toolbar badge ----------------------------------------------------------
+// --- toolbar status ---------------------------------------------------------
 function setBadge(running, error = false) {
-  const text = error ? "!" : running ? "ON" : "";
-  const color = error ? "#ff6b6b" : running ? "#2ecc71" : "#4a4f5e";
+  const state = error ? "error" : running ? "on" : "off";
+  // Fire and forget: the icon is cosmetic and must never block a state change.
+  setStatusIcon(state).catch(() => {});
   try {
-    chrome.action.setBadgeText({ text });
-    chrome.action.setBadgeBackgroundColor({ color });
     chrome.action.setTitle({
       title: error
-        ? "MagicProxy — ошибка"
+        ? "MagicProxy — ошибка, откройте расширение"
         : running
           ? "MagicProxy — включено"
           : "MagicProxy — выключено",
@@ -219,6 +219,10 @@ export async function enable(profileId) {
   await setDesired({ on: true, profileId: id });
   try {
     const r = await reconcile();
+    // "Connecting" pulse, started only after the tunnel is actually up so it never
+    // implies success that did not happen. Not awaited: it is purely cosmetic and
+    // must not delay the popup's response.
+    pulseConnecting("on").catch(() => {});
     return { port: r.port, profileId: id };
   } catch (e) {
     state.lastError = e.message;

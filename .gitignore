@@ -29,3 +29,6 @@ Thumbs.db
 # Scratch
 tmp-*/
 .dnstest/
+
+# Локальное превью иконки — не для репозитория
+preview-icon.html
