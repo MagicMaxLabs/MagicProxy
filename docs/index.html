@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<!--
+  Landing page for GitHub Pages (Settings -> Pages -> main / /docs). Without an
+  index the site root returns 404, which looks broken to anyone who trims the
+  privacy-policy URL back to the domain — including a store reviewer.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MagicProxy</title>
+<meta name="description" content="Route one Chromium browser profile through your own proxy server. Other profiles and the rest of Windows stay direct.">
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e;
+    --link: #0969da; --rule: #d1d9e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1;
+      --link: #4493f8; --rule: #3d444d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; padding: 4rem 1.25rem 5rem; max-width: 40rem;
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 2.1rem; margin: 0 0 .5rem; }
+  .lede { font-size: 1.1rem; color: var(--muted); margin: 0 0 2.5rem; }
+  h2 { font-size: 1.05rem; margin: 2.5rem 0 .6rem; }
+  a { color: var(--link); }
+  ul { padding-left: 1.35rem; }
+  li { margin: .45rem 0; }
+  footer {
+    margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--rule);
+    color: var(--muted); font-size: .9rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>MagicProxy</h1>
+<p class="lede">
+  Route one Chromium browser profile through your own proxy server. Other profiles
+  and the rest of Windows stay on their normal connection.
+</p>
+
+<h2>Documents</h2>
+<ul>
+  <li><a href="./privacy.html">Privacy policy</a></li>
+  <li><a href="https://github.com/MagicMaxLabs/MagicProxy/blob/main/SECURITY.md">Security policy and threat model</a></li>
+  <li><a href="https://github.com/MagicMaxLabs/MagicProxy/blob/main/README.md">README</a></li>
+</ul>
+
+<h2>Project</h2>
+<ul>
+  <li><a href="https://github.com/MagicMaxLabs/MagicProxy">Source code</a></li>
+  <li><a href="https://github.com/MagicMaxLabs/MagicProxy/releases/latest">Download the latest release</a></li>
+  <li><a href="https://github.com/MagicMaxLabs/MagicProxy/issues">Report a problem</a></li>
+</ul>
+
+<footer>
+  MagicProxy is a proxy configurator, not a VPN service: it carries your traffic to
+  a server that you provide and operate.
+</footer>
+
+</body>
+</html>

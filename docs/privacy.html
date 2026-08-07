@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!--
+  Published rendering of the repository's PRIVACY.md, kept as plain HTML on
+  purpose: GitHub Pages only runs a Markdown file through Jekyll when it carries
+  YAML front matter, so a .md file here would be served as raw text. The Chrome
+  Web Store requires a privacy policy URL that renders as a page, so this file is
+  the canonical published copy. When PRIVACY.md changes, change this too.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — MagicProxy</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1f2328; --muted: #59636e;
+    --link: #0969da; --rule: #d1d9e0; --mark: #f6f8fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1;
+      --link: #4493f8; --rule: #3d444d; --mark: #161b22;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; padding: 3rem 1.25rem 5rem; max-width: 42rem;
+    background: var(--bg); color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  h1 { font-size: 1.9rem; line-height: 1.25; margin: 0 0 .25rem; }
+  h2 {
+    font-size: 1.2rem; margin: 2.5rem 0 .75rem;
+    padding-bottom: .3rem; border-bottom: 1px solid var(--rule);
+  }
+  a { color: var(--link); }
+  code {
+    background: var(--mark); padding: .15em .35em; border-radius: 4px;
+    font: .875em ui-monospace, SFMono-Regular, Consolas, monospace;
+  }
+  .updated { color: var(--muted); margin: 0 0 2rem; font-size: .95rem; }
+  ol, ul { padding-left: 1.35rem; }
+  li { margin: .4rem 0; }
+  footer {
+    margin-top: 3.5rem; padding-top: 1.25rem; border-top: 1px solid var(--rule);
+    color: var(--muted); font-size: .9rem;
+  }
+</style>
+</head>
+<body>
+
+<h1>Privacy Policy — MagicProxy</h1>
+<p class="updated">Last updated: 7 August 2026</p>
+
+<h2>Short version</h2>
+<p>
+  MagicProxy has no servers, no accounts, no telemetry and no analytics. The
+  developers never receive any of your data, because there is nowhere for it to be
+  sent. Everything below describes what the software handles <strong>locally, on
+  your own computer</strong>.
+</p>
+
+<h2>What the software handles</h2>
+<p>
+  <strong>Proxy server configuration that you enter.</strong> Server addresses,
+  ports, UUIDs, passwords, pre-shared keys and similar values. This is
+  authentication information. It is stored locally in your browser profile
+  (<code>chrome.storage.local</code>), it is <strong>not</strong> synced to your
+  Google account, and it is sent only to the MagicProxy background component
+  running on the same computer, which needs it to configure the networking core.
+</p>
+<p>
+  <strong>Your on/off state and routing rules.</strong> Stored locally in the same
+  way.
+</p>
+<p>
+  <strong>Diagnostic log lines produced by the networking core.</strong> Kept in
+  memory for display in the extension popup. Not written to disk by the extension,
+  and not transmitted. The core runs at a log level that does not record the sites
+  you visit.
+</p>
+<p>
+  <strong>A generated core configuration file.</strong> While the proxy runs, the
+  background component writes a configuration file containing your server details
+  to a temporary directory on your computer. It is removed when you uninstall.
+</p>
+
+<h2>What is never collected</h2>
+<p>
+  No browsing history. No page contents. No URLs. No cookies. No form data. No
+  identifiers. No usage statistics. No crash reports.
+</p>
+<p>
+  The extension declares <strong>no host permissions</strong> and injects no
+  scripts into web pages. Its permissions are limited to <code>proxy</code>,
+  <code>storage</code>, <code>nativeMessaging</code> and <code>alarms</code>.
+</p>
+
+<h2>Network connections the software makes by design</h2>
+<ol>
+  <li>
+    <strong>To the proxy server you configure.</strong> That server carries your
+    traffic and sees your IP address and your destinations. We have no relationship
+    with it — choose a server you trust.
+  </li>
+  <li>
+    <strong>To GitHub</strong>, only if you use the optional “check for core
+    updates” function. GitHub sees your IP address for that request. The installer
+    itself downloads nothing; the networking core is bundled.
+  </li>
+</ol>
+<p>That is the complete list. The software contacts no other host.</p>
+
+<h2>Limited Use disclosure</h2>
+<p>
+  Our use of information received from Google APIs adheres to the
+  <a href="https://developer.chrome.com/docs/webstore/program-policies/user-data-faq">Chrome
+  Web Store User Data Policy</a>, including the Limited Use requirements.
+</p>
+
+<h2>Data deletion</h2>
+<p>
+  Removing the extension deletes its local storage, including your server profiles.
+  Uninstalling the background component removes its files and its temporary
+  configuration. There is no server-side data to delete, because there is no server.
+</p>
+
+<h2>Changes to this policy</h2>
+<p>
+  Material changes will be noted in the project's
+  <a href="https://github.com/MagicMaxLabs/MagicProxy/blob/main/CHANGELOG.md">CHANGELOG.md</a>
+  and in the release notes, and this date will be updated.
+</p>
+
+<h2>Contact</h2>
+<p>
+  <a href="mailto:magicmaxlabs@gmail.com">magicmaxlabs@gmail.com</a> ·
+  <a href="https://github.com/MagicMaxLabs/MagicProxy/issues">Issue tracker</a>
+</p>
+
+<footer>
+  <a href="./">MagicProxy</a> ·
+  <a href="https://github.com/MagicMaxLabs/MagicProxy">Source on GitHub</a>
+</footer>
+
+</body>
+</html>
