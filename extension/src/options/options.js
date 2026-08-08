@@ -7,6 +7,7 @@ import {
   setRouting,
 } from "../lib/profiles.js";
 import { parseSubscription, looksLikeSubscriptionUrl } from "../lib/parse.js";
+import { PRIVACY_URL, SECURITY_URL } from "../common/constants.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -313,6 +314,19 @@ $("updateCoreBtn").addEventListener("click", async () => {
     $("updateCoreBtn").disabled = false;
   }
 });
+
+// --- Раздел «Данные» ---------------------------------------------------------
+// Открываем в новой вкладке через chrome.tabs: на странице настроек расширения
+// обычный href уводит из неё, а вернуться потом некуда.
+for (const [id, url] of [["privacyLink", PRIVACY_URL], ["securityLink", SECURITY_URL]]) {
+  const el = $(id);
+  if (el) {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url });
+    });
+  }
+}
 
 // --- Init -------------------------------------------------------------------
 renderProfiles();

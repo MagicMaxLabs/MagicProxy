@@ -29,6 +29,13 @@ export const DOWNLOAD_MIRRORS = [
 // Release page, for checksums and older versions.
 export const RELEASES_URL = "https://github.com/MagicMaxLabs/MagicProxy/releases/latest";
 
+// Раскрытие обращения с данными живёт в интерфейсе (раздел «Данные» в настройках),
+// а эти ссылки ведут за подробностями. Политика — на GitHub Pages, потому что
+// рабочий URL политики обязателен для заявки в магазин.
+export const PRIVACY_URL = "https://magicmaxlabs.github.io/MagicProxy/privacy.html";
+export const SECURITY_URL =
+  "https://github.com/MagicMaxLabs/MagicProxy/blob/main/SECURITY.md";
+
 // chrome.storage.local keys
 export const STORAGE_KEYS = {
   PROFILES: "profiles",
