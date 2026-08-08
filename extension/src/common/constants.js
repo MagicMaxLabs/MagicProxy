@@ -35,7 +35,9 @@ export const STORAGE_KEYS = {
   ACTIVE_PROFILE_ID: "activeProfileId",
   ROUTING: "routing",
   SETTINGS: "settings",
-  RUNTIME: "runtime", // volatile mirror for UI: { running, port, lastError }
+  // coreProfileId нужен согласованию, а не интерфейсу: по нему видно, что живое
+  // ядро собрано под другой профиль и его надо перезапустить.
+  RUNTIME: "runtime", // { running, port, coreProfileId, lastError }
   DESIRED: "desired", // persisted intent: { on, profileId, port }
 };
 

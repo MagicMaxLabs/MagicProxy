@@ -3,7 +3,6 @@ import {
   saveProfile,
   deleteProfile,
   getActiveProfileId,
-  setActiveProfileId,
   getRouting,
   setRouting,
 } from "../lib/profiles.js";
@@ -35,7 +34,15 @@ async function renderProfiles() {
     radio.type = "radio";
     radio.name = "active";
     radio.checked = p.id === activeId;
-    radio.addEventListener("change", () => setActiveProfileId(p.id));
+    // Через service worker, а не setActiveProfileId(): при работающем прокси
+    // смену профиля надо ещё и применить — перезапустить ядро под новый конфиг.
+    // Тот же дефект, что был в попапе.
+    radio.addEventListener("change", async () => {
+      radio.disabled = true;
+      const resp = await send("setProfile", { profileId: p.id });
+      radio.disabled = false;
+      if (!resp.ok) alert(`Не удалось переключить профиль: ${resp.error}`);
+    });
     tdRadio.appendChild(radio);
 
     const tdName = document.createElement("td");

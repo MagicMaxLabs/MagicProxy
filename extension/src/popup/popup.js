@@ -1,8 +1,4 @@
-import {
-  listProfiles,
-  getActiveProfileId,
-  setActiveProfileId,
-} from "../lib/profiles.js";
+import { listProfiles, getActiveProfileId } from "../lib/profiles.js";
 import { STORAGE_KEYS } from "../common/constants.js";
 
 const el = {
@@ -134,6 +130,11 @@ function renderState(s) {
   } else if (s.healing) {
     el.statusLine.textContent = "Восстанавливаю соединение…";
     el.statusLine.className = "status";
+  } else if (s.foreignProxy) {
+    // Прокси профиля держит другое расширение. Снять его мы не можем, но молчать
+    // нельзя: без этой строки попап писал бы «Выключено», пока браузер не работает.
+    el.statusLine.textContent = "Выключено. Прокси профиля занят другим расширением";
+    el.statusLine.className = "status status--warn";
   } else {
     el.statusLine.textContent = "Выключено";
     el.statusLine.className = "status status--off";
@@ -155,14 +156,38 @@ async function refreshLogs() {
   }
 }
 
+// Смену профиля выполняет service worker: записать выбор в storage мало, работающее
+// ядро надо перезапустить под новый конфиг. Раньше здесь стоял только setActiveProfileId(),
+// и прежний сервер оставался рабочим до цикла «выключить — включить».
 el.profileSelect.addEventListener("change", async () => {
-  await setActiveProfileId(el.profileSelect.value || null);
+  if (busy) return;
+  const id = el.profileSelect.value || null;
+  const wasOn = desiredOn;
+  busy = true;
+  el.profileSelect.disabled = true;
+  if (wasOn) {
+    el.toggleBtn.disabled = true;
+    el.statusLine.textContent = "Переключаю профиль…";
+    el.statusLine.className = "status";
+  }
+  const resp = await send("setProfile", { profileId: id });
+  busy = false;
+  el.profileSelect.disabled = false;
+  if (!resp.ok) {
+    el.statusLine.textContent = `Ошибка: ${humanError(resp.error)}`;
+    el.statusLine.className = "status status--err";
+  }
+  await refreshState();
+  if (wasOn) await refreshLogs();
 });
 
 el.toggleBtn.addEventListener("click", async () => {
   if (busy) return;
   busy = true;
   el.toggleBtn.disabled = true;
+  // Пока запрос в полёте, список профилей заблокирован: иначе выбор уедет вперёд
+  // намерения, и на экране будет один профиль, а в работе другой.
+  el.profileSelect.disabled = true;
   el.statusLine.textContent = desiredOn ? "Останавливаю…" : "Запускаю…";
   el.statusLine.className = "status";
   const resp = desiredOn
@@ -170,6 +195,7 @@ el.toggleBtn.addEventListener("click", async () => {
     : await send("enable", { profileId: el.profileSelect.value });
   busy = false;
   el.toggleBtn.disabled = false;
+  el.profileSelect.disabled = false;
   if (!resp.ok) {
     el.statusLine.textContent = `Ошибка: ${humanError(resp.error)}`;
     el.statusLine.className = "status status--err";
@@ -198,6 +224,12 @@ el.hostStatus.addEventListener("click", () => {
   desiredOn = !!(d[STORAGE_KEYS.DESIRED] && d[STORAGE_KEYS.DESIRED].on);
   el.toggleBtn.textContent = desiredOn ? "Выключить" : "Включить";
   el.toggleBtn.className = desiredOn ? "toggle toggle--on" : "toggle toggle--off";
+  // Строка состояния тоже обязана отражать намерение сразу. Раньше чинилась только
+  // надпись на кнопке, а строка держала разметочное «Выключено» до конца опроса
+  // хоста — а это круг Native Messaging на разбуженном воркере. Включённый
+  // пользователь секунду видел, что у него всё выключено.
+  el.statusLine.textContent = desiredOn ? "Проверяю соединение…" : "Выключено";
+  el.statusLine.className = desiredOn ? "status" : "status status--off";
   // An ON user can act immediately; an OFF user waits for the host probe.
   if (desiredOn) el.toggleBtn.disabled = false;
 

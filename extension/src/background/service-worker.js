@@ -18,8 +18,13 @@ import {
 } from "../common/constants.js";
 import { native, onEvent, disconnect } from "../lib/native.js";
 import * as proxy from "../lib/proxy.js";
-import { setStatusIcon, pulseConnecting } from "../lib/badge.js";
-import { getProfile, getActiveProfileId, getRouting } from "../lib/profiles.js";
+import { setStatusIcon, pulseConnecting, pulseAlert } from "../lib/badge.js";
+import {
+  getProfile,
+  getActiveProfileId,
+  setActiveProfileId,
+  getRouting,
+} from "../lib/profiles.js";
 
 // Only logs + lastError are truly volatile; running state lives in storage.
 const state = { logs: [], lastError: null };
@@ -45,10 +50,62 @@ async function setDesired(patch) {
   return next;
 }
 
-async function persistRuntime(running, port) {
+// coreProfileId — чей конфиг исполняет запущенное ядро. Хост это сказать не может:
+// его `status` отвечает только { running, port, uptimeSec }. Помним сами и держим
+// в storage, потому что воркер MV3 выгружают через ~30 с и переменная модуля не
+// доживёт. Пишется ПЕРЕД запуском ядра, а не после: пасс, который успел стартовать
+// ядро и был вытеснен сменой намерения, обязан оставить след, иначе следующий пасс
+// примет чужое ядро за своё.
+async function persistRuntime(running, port, coreProfileId = null) {
+  // foreignAlerted переживает запись: он про то, предупредили ли мы уже о
+  // перехвате, и к running/port отношения не имеет. Затирать его здесь значило бы
+  // мигать заново на каждом проходе согласования.
+  const prev = await getRuntime();
   await chrome.storage.local.set({
-    [STORAGE_KEYS.RUNTIME]: { running, port: port || null, lastError: state.lastError },
+    [STORAGE_KEYS.RUNTIME]: {
+      running,
+      port: port || null,
+      coreProfileId,
+      foreignAlerted: !!prev.foreignAlerted,
+      lastError: state.lastError,
+    },
   });
+}
+
+async function getRuntime() {
+  const d = await chrome.storage.local.get(STORAGE_KEYS.RUNTIME);
+  return (
+    d[STORAGE_KEYS.RUNTIME] || {
+      running: false,
+      port: null,
+      coreProfileId: null,
+      foreignAlerted: false,
+    }
+  );
+}
+
+/**
+ * Перехват прокси чужим расширением: помигать точкой в углу иконки.
+ *
+ * Мигаем ТОЛЬКО на переходе. Попап опрашивает состояние раз в 2 секунды, а
+ * будильник согласования — раз в 30; повторять сигнал, пока перехват держится,
+ * значило бы дёргать иконку без конца. Флаг лежит в storage, потому что воркер
+ * MV3 выгружают и переменная модуля до следующего опроса не доживёт.
+ *
+ * @param {boolean} hijacked прокси сейчас за чужим расширением
+ * @param {boolean} on включён ли прокси по намерению пользователя
+ */
+async function noteForeignProxy(hijacked, on) {
+  const rt = await getRuntime();
+  if (hijacked === !!rt.foreignAlerted) return;
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.RUNTIME]: { ...rt, foreignAlerted: hijacked },
+  });
+  if (!hijacked) return;
+  // Перехват при включённом прокси означает, что трафик идёт НАПРЯМУЮ: наша
+  // настройка не действует, а fail-closed тут недостижим — распоряжается чужое
+  // расширение. Это красный. При выключенном прокси это предупреждение — янтарный.
+  pulseAlert(on ? "error" : "warn", on ? "error" : "off").catch(() => {});
 }
 
 // --- toolbar status ---------------------------------------------------------
@@ -133,11 +190,23 @@ function reconcile() {
   const run = reconciling
     ? reconciling.catch(() => {}).then(() => doReconcile(startEpoch))
     : doReconcile(startEpoch);
-  reconciling = run.finally(() => {
-    if (reconciling === run) reconciling = null;
+  // Сравнивать надо с ТЕМ ЖЕ промисом, который лежит в reconciling. Раньше здесь
+  // стояло `reconciling = run.finally(() => { if (reconciling === run) ... })`, а в
+  // reconciling попадает производный промис, не run, — условие не выполнялось
+  // никогда, и reconciling навсегда оставался непустым.
+  //
+  // Цена ошибки была велика: при неизменившемся намерении reconcile() возвращал
+  // старый завершённый промис и не выполнял ничего. Будильник согласования
+  // работал вхолостую, а самолечение случалось только при перезапуске воркера,
+  // который обнуляет переменные модуля. Отсюда и «чужое расширение выключил, а
+  // ошибка с красной точкой остались»: проход, который всё бы починил, не
+  // запускался.
+  const tracked = run.finally(() => {
+    if (reconciling === tracked) reconciling = null;
   });
+  reconciling = tracked;
   reconcilingEpoch = startEpoch;
-  return reconciling;
+  return tracked;
 }
 
 // Every background caller of reconcile() used to swallow failures with an empty
@@ -149,6 +218,9 @@ function reconcileInBackground() {
     setBadge(false, true);
     const d = await getDesired();
     await persistRuntime(false, d.port);
+    // Единственная точка, где перехват виден при закрытом попапе и включённом
+    // прокси: applyProxyFor() падает именно здесь.
+    if (e.name === "ProxyControlError") await noteForeignProxy(true, true);
   });
 }
 
@@ -188,10 +260,41 @@ async function doReconcile(startEpoch = intentEpoch) {
     status = null;
   }
 
+  // Живое ядро, собранное под другой профиль, надо заменить, а не переиспользовать.
+  // Без этой проверки смена профиля в попапе оставляла работать прежний сервер, и
+  // помогал только цикл «выключить — включить»: он один действительно гасил ядро.
+  // Неизвестный coreProfileId тоже считаем чужим — перезапуск дешевле, чем тихо
+  // оставить пользователя на не том сервере.
+  const runtime = await getRuntime();
+  // Читается ДО любой записи в этом проходе: по нему видно, поднимаемся ли мы из
+  // нерабочего состояния. Нужно для пульсации — мигать на каждом проходе
+  // согласования, а их теперь раз в 30 секунд, было бы мучением.
+  //
+  // «Здоровы» — это не только running. Короткий перехват не успевает уронить ни
+  // один проход, running остаётся true, а точка уже красная от пульсации тревоги;
+  // без учёта foreignAlerted возврат в строй проходил бы молча.
+  const wasHealthy = !!runtime.running && !state.lastError && !runtime.foreignAlerted;
+  const wrongProfile = !!(
+    status &&
+    status.running &&
+    runtime.coreProfileId !== desired.profileId
+  );
+
   let port;
-  if (status && status.running && status.port) {
+  if (status && status.running && status.port && !wrongProfile) {
     port = status.port;
   } else {
+    if (wrongProfile) {
+      // chrome.proxy на время подмены остаётся направленным на тот же порт: разрыв
+      // получается fail-closed, а не утечкой напрямую в момент переключения.
+      try {
+        await native.stop();
+      } catch (e) {
+        console.warn("[sw] stop before profile switch failed:", e.message);
+      }
+      if (superseded()) return { running: false, superseded: true };
+    }
+    await persistRuntime(false, desired.port, desired.profileId);
     port = await startCore(profile, desired.port);
   }
   if (superseded()) return { running: false, superseded: true };
@@ -207,7 +310,16 @@ async function doReconcile(startEpoch = intentEpoch) {
   startKeepalive();
   setBadge(true);
   state.lastError = null;
-  await persistRuntime(true, port);
+  await persistRuntime(true, port, desired.profileId);
+  // Управление у нас — значит перехват кончился, и о следующем надо предупредить
+  // заново.
+  await noteForeignProxy(false, true);
+  // Зелёная пульсация на ПЕРЕХОДЕ в рабочее состояние — и после нажатия кнопки, и
+  // после самостоятельного восстановления (чужое расширение убрали, хост ожил).
+  // Раньше она жила в enable() и поэтому доставалась только ручному включению:
+  // прокси возвращался сам, а пользователь этого не видел. Не ждём завершения —
+  // это косметика, она не должна задерживать ответ попапу.
+  if (!wasHealthy) pulseConnecting("on").catch(() => {});
   return { running: true, port };
 }
 
@@ -219,15 +331,42 @@ export async function enable(profileId) {
   await setDesired({ on: true, profileId: id });
   try {
     const r = await reconcile();
-    // "Connecting" pulse, started only after the tunnel is actually up so it never
-    // implies success that did not happen. Not awaited: it is purely cosmetic and
-    // must not delay the popup's response.
-    pulseConnecting("on").catch(() => {});
+    // Пульсация переехала в doReconcile: она нужна на любом переходе в рабочее
+    // состояние, а не только на ручном включении. Условие «только после того, как
+    // туннель действительно поднялся» там сохранено — она стоит после
+    // applyProxyFor() и потому не может пообещать успех, которого не было.
     return { port: r.port, profileId: id };
   } catch (e) {
     state.lastError = e.message;
     setBadge(false, true);
     await persistRuntime(false, null);
+    // enable() ловит ошибку сам и до обработчика reconcileInBackground() не
+    // доходит — поэтому о перехвате надо сказать здесь отдельно.
+    if (e.name === "ProxyControlError") await noteForeignProxy(true, true);
+    throw e;
+  }
+}
+
+// Смена профиля обязана дойти до НАМЕРЕНИЯ, а не только до выбора в интерфейсе.
+// Активный профиль хранится в двух разных ключах: ACTIVE_PROFILE_ID читает попап,
+// а цикл согласования читает desired.profileId. Попап писал только первый — отсюда
+// и брался работающий прежний сервер.
+export async function setProfile(profileId) {
+  const id = profileId || null;
+  await setActiveProfileId(id);
+  const desired = await getDesired();
+  // Выключённому прокси переключать нечего: профиль подхватится при включении.
+  if (!desired.on || !id || desired.profileId === id) return { switched: false };
+  state.lastError = null;
+  await setDesired({ profileId: id });
+  try {
+    const r = await reconcile();
+    return { switched: true, port: r.port };
+  } catch (e) {
+    state.lastError = e.message;
+    setBadge(false, true);
+    await persistRuntime(false, null);
+    if (e.name === "ProxyControlError") await noteForeignProxy(true, true);
     throw e;
   }
 }
@@ -235,6 +374,11 @@ export async function enable(profileId) {
 export async function disable() {
   await setDesired({ on: false });
   stopKeepalive();
+  // Прокси снимается ПЕРВЫМ действием, до всякого ожидания. Раньше сначала ждали
+  // незавершённый проход, и пока тот сидел внутри native.start() (до 30 с) или
+  // падал, профиль оставался без интернета: chrome.proxy указывал на порт, где
+  // уже никто не слушает. Возврат связи не должен ждать ничего.
+  await proxy.clear();
   // A reconcile started before this click read desired.on === true and can still
   // be inside native.start() (up to 30 s). Let it finish before we tear down,
   // otherwise it re-applies chrome.proxy afterwards and the proxy the user just
@@ -249,6 +393,7 @@ export async function disable() {
   // A superseded pass may have re-armed the alarm before noticing; clear it again
   // now that nothing else is in flight.
   stopKeepalive();
+  // Второй раз — на случай, если добитый проход успел применить настройку заново.
   await proxy.clear();
   try {
     await native.stop();
@@ -264,6 +409,28 @@ export async function disable() {
 
 async function getState() {
   const desired = await getDesired();
+  // Выключённое состояние проверяется на две беды сразу.
+  //
+  // Первая: «намерение выключено, а прокси всё ещё наш» — в нём профиль сидит без
+  // интернета. Попап опрашивает состояние каждые 2 секунды, поэтому такое не
+  // переживёт даже одного открытия попапа, каким бы путём ни возникло: отказом
+  // clear(), гибелью воркера посреди disable() или чем-то, чего мы ещё не знаем.
+  //
+  // Вторая: прокси держит чужое расширение. Снять его мы не можем — Chrome не даёт
+  // одному расширению трогать настройки другого, — но обязаны сказать. Иначе попап
+  // пишет «Выключено», пока профиль не работает из-за чужой настройки: ровно так
+  // выглядела авария 8 августа, и час ушёл на поиск виновника вручную.
+  //
+  // Имя виновника мы намеренно НЕ показываем: для этого нужно разрешение
+  // `management`, а оно даёт список всех установленных расширений. Для прокси-
+  // расширения это и лишний доступ к личным данным, и заметный минус на ревью в
+  // магазине. Факта и подсказки, где искать, достаточно.
+  let foreignProxy = false;
+  if (!desired.on) {
+    await proxy.clearIfOurs();
+    foreignProxy = (await proxy.controlLevel()) === "controlled_by_other_extensions";
+    await noteForeignProxy(foreignProxy, false);
+  }
   let running = false;
   let port = desired.port;
   if (desired.on) {
@@ -280,9 +447,19 @@ async function getState() {
     if (running) {
       try {
         const lvl = (await chrome.proxy.settings.get({})).levelOfControl;
+        // Перехват на ходу: прокси включён, а распоряжается им уже не наше
+        // расширение. Трафик в этот момент идёт напрямую — самый тревожный из
+        // возможных случаев, поэтому мигаем красным.
+        await noteForeignProxy(lvl === "controlled_by_other_extensions", true);
         if (lvl !== "controlled_by_this_extension") {
           running = false;
           state.lastError = new proxy.ProxyControlError(lvl).message;
+        } else if (state.lastError) {
+          // Ядро живо и прокси наш — прежняя ошибка устарела. Без этой ветки попап
+          // показывал бы её до следующего успешного прохода согласования, а точка
+          // горела бы красным поверх работающего туннеля.
+          state.lastError = null;
+          setBadge(true);
         }
       } catch (_) {
         /* if we cannot read it, leave the host's answer alone */
@@ -297,6 +474,7 @@ async function getState() {
     healing: desired.on && !running,
     port,
     activeProfileId: desired.profileId,
+    foreignProxy,
     lastError: state.lastError,
   };
 }
@@ -337,6 +515,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case "disable":
           sendResponse({ ok: true, data: await disable() });
           break;
+        case "setProfile":
+          sendResponse({ ok: true, data: await setProfile(msg.profileId) });
+          break;
         case "state":
           sendResponse({ ok: true, data: await getState() });
           break;
@@ -367,6 +548,65 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return true; // async response
 });
 
+// --- перехват прокси чужим расширением --------------------------------------
+
+// Перехват надо замечать и при закрытом попапе. Опросом это недостижимо: когда
+// прокси выключен, будильник согласования снят, и getState() выполняется только
+// пока попап открыт, — поэтому раньше точка начинала мигать лишь после нажатия
+// на кнопку расширения.
+//
+// Здесь подписка на само событие. Регистрация на верхнем уровне модуля
+// обязательна: так Chrome будит выгруженный воркер MV3 ради этого события.
+// Мигание держит воркер живым само — оно вызывает chrome.action.setIcon каждые
+// 60 мс, и таймер простоя не успевает истечь.
+chrome.proxy.settings.onChange.addListener(async (details) => {
+  const desired = await getDesired();
+  const level = details.levelOfControl;
+  // Читается ДО noteForeignProxy: та сбрасывает флаг, а он нам нужен как признак
+  // «мы уже сообщили о перехвате».
+  const rt = await getRuntime();
+  const wasHijacked = !!rt.foreignAlerted;
+  const hijacked = level === "controlled_by_other_extensions";
+  // Сбрасывать флаг здесь нельзя: проход согласования читает его, чтобы понять,
+  // что поднимается из нерабочего состояния, и мигнуть зелёным. Снимет его сам
+  // проход, когда всё получится.
+  if (hijacked) await noteForeignProxy(true, !!desired.on);
+
+  // Перехват кончился, а прокси нам нужен — приводим себя в порядок немедленно.
+  //
+  // Уровень тут бывает ДВУХ видов, и это выяснилось только на живом прогоне:
+  //   controllable_by_this_extension — настройкой не распоряжается никто. Так
+  //     бывает, если во время перехвата успел пройти цикл согласования: apply()
+  //     упал и откатил наше значение. Прокси надо применить заново.
+  //   controlled_by_this_extension — наше значение всё это время оставалось
+  //     сохранённым (отката не было, потому что перехват длился меньше периода
+  //     будильника), и Chrome вернул его в силу сам. Туннель уже работает, но
+  //     точка осталась красной, а lastError — прежним.
+  // Второй случай и есть обычный: пользователь включает и выключает чужое
+  // расширение за секунды, задолго до срабатывания будильника.
+  //
+  // От петли защищает условие «мы сейчас в нерабочем состоянии»: после успешного
+  // прохода runtime.running = true и lastError = null, и события от нашего же
+  // apply() сюда больше не проходят. Плюс сам reconcile() однопоточен — событие,
+  // прилетевшее посреди нашего apply(), получит уже идущий проход, а не новый.
+  // Признак «надо привести себя в порядок» — это ИМЕННО факт бывшего перехвата, а
+  // не нерабочее состояние. Живой прогон показал разницу: перехват длился секунды,
+  // ни один проход согласования не успел упасть, поэтому runtime.running остался
+  // true, а lastError пустым — красной точку сделала одна лишь пульсация. Проверка
+  // на «сломаны» такой случай пропускала, и цвет чинил только будильник.
+  //
+  // Остальные два условия оставлены для долгого перехвата, когда проход всё же
+  // успел упасть и откатить наше значение.
+  if (hijacked) return;
+  if (desired.on && (wasHijacked || !rt.running || state.lastError)) {
+    await reconcileInBackground();
+  } else if (wasHijacked) {
+    // Прокси выключен, а перехват кончился: согласовывать нечего, но флаг снять
+    // надо — иначе о следующем перехвате мы промолчим.
+    await noteForeignProxy(false, false);
+  }
+});
+
 // --- lifecycle --------------------------------------------------------------
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === KEEPALIVE_ALARM) reconcileInBackground();
@@ -393,5 +633,8 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 (async () => {
   const desired = await getDesired();
   setBadge(desired.on);
+  // Если воркер убили посреди disable(), настройка могла остаться применённой при
+  // выключённом намерении. Снимаем сразу, не дожидаясь прохода согласования.
+  if (!desired.on) await proxy.clearIfOurs();
   reconcileInBackground();
 })();

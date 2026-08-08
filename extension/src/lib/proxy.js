@@ -94,13 +94,72 @@ export async function apply({ mode, host = "127.0.0.1", port, rules = {}, bypass
   // Verify the setting actually took effect for this profile.
   const state = await chrome.proxy.settings.get({});
   if (state.levelOfControl !== "controlled_by_this_extension") {
+    // Значение уже сохранено, хотя и не действует: set() отработал, а старше нас
+    // оказалось чужое расширение. Убираем его за собой. Иначе оно ждёт своего
+    // часа: чужое расширение когда-нибудь уберут, Chrome применит наш забытый
+    // конфиг на порт, где давно ничего не слушает, и профиль останется без
+    // интернета без единой видимой причины. Ровно так выглядела авария
+    // 8 августа, только там забытый конфиг остался от прежней регистрации.
+    try {
+      await chrome.proxy.settings.clear({ scope: "regular" });
+    } catch (e) {
+      console.warn("[proxy] rollback after lost control failed:", e.message);
+    }
     throw new ProxyControlError(state.levelOfControl);
   }
   return config;
 }
 
+/**
+ * Снять прокси. Никогда не бросает исключение и никогда не оставляет настройку
+ * за собой молча.
+ *
+ * Прежняя версия делала один `clear()` и пробрасывала отказ наверх. Одного
+ * неудачного вызова хватало, чтобы профиль остался с настройкой на порт, где
+ * ничего не слушает: браузер показывает ERR_PROXY_CONNECTION_FAILED, и починить
+ * это из интерфейса было нечем. Профиль без интернета — худший исход из
+ * возможных, он важнее любой другой ошибки, поэтому здесь есть и проверка
+ * результата, и запасной путь.
+ */
 export async function clear() {
-  await chrome.proxy.settings.clear({ scope: "regular" });
+  try {
+    await chrome.proxy.settings.clear({ scope: "regular" });
+  } catch (e) {
+    console.warn("[proxy] clear failed:", e.message);
+  }
+  try {
+    const state = await chrome.proxy.settings.get({});
+    if (state.levelOfControl !== "controlled_by_this_extension") return;
+    // Настройка всё ещё наша. Ставим системную явно — это возвращает связь даже
+    // если clear() почему-то не сработал, — и пробуем снять ещё раз.
+    await chrome.proxy.settings.set({ value: { mode: "system" }, scope: "regular" });
+    await chrome.proxy.settings.clear({ scope: "regular" });
+  } catch (e) {
+    console.warn("[proxy] clear verification failed:", e.message);
+  }
+}
+
+/**
+ * Кто сейчас распоряжается настройкой прокси этого профиля.
+ * Возвращает значение levelOfControl или null, если прочитать не удалось.
+ */
+export async function controlLevel() {
+  try {
+    return (await chrome.proxy.settings.get({})).levelOfControl;
+  } catch (e) {
+    console.warn("[proxy] controlLevel failed:", e.message);
+    return null;
+  }
+}
+
+/** Снять прокси, только если он всё ещё наш. Дешёвая страховка для опроса. */
+export async function clearIfOurs() {
+  try {
+    const state = await chrome.proxy.settings.get({});
+    if (state.levelOfControl === "controlled_by_this_extension") await clear();
+  } catch (e) {
+    console.warn("[proxy] clearIfOurs failed:", e.message);
+  }
 }
 
 export async function current() {
