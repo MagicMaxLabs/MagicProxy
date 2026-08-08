@@ -21,7 +21,11 @@ Push-Location (Join-Path $Root "native-host")
 try {
   $out = Join-Path $VendorBin "magicproxy-host.exe"
   Write-Host "Building host -> $out"
-  go build -o $out ./cmd/host
+  # -trimpath — то же, чем собирает CI. Без него в бинарник попадают абсолютные пути
+  # того, кто собирал, и сборка из исходников перестаёт побайтово совпадать с
+  # релизной. А «собери сам и сравни» — единственная замена отсутствующей подписи
+  # кода, ломать её на пустом месте нельзя.
+  go build -trimpath -o $out ./cmd/host
   Write-Host "Built magicproxy-host.exe"
 } finally {
   Pop-Location
