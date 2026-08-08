@@ -1,13 +1,64 @@
+@charset "UTF-8";
+
+/* Токены выведены на оси светлоты OKLCH и проверены расчётом контраста, а не на
+   глаз. Правило палитры: холодное — штатная работа, тёплое — требует внимания.
+   Нейтрали держат тон 205° при малой насыщенности: почти серые, но не стандартная
+   сине-фиолетовая «тёмная админка».
+
+   Блок :root намеренно одинаков в popup.css, options.css и onboarding.css — это
+   один словарь на три поверхности. Поэтому здесь объявлены и те токены, которые
+   попапу не нужны (--warn, --panel): расхождение подмножеств обошлось бы дороже,
+   чем пара неиспользованных строк. Менять — во всех трёх файлах сразу. */
 :root {
-  --bg: #14161c;
-  --panel: #1c1f28;
-  --text: #e6e8ee;
-  --muted: #8b90a0;
-  --accent: #6c5ce7;
-  --on: #2ecc71;
-  --off: #4a4f5e;
-  --err: #ff6b6b;
-  --border: #2a2e3a;
+  color-scheme: dark;
+
+  /* Поверхности */
+  --ink: #0a1213; /* самая глубокая: логи, поле ввода */
+  --bg: #10191a;
+  --panel: #1b2627;
+  --off: #3a4648; /* заливка неактивного состояния */
+
+  /* Линии. --line — структура (разделители), --edge — контур органа управления:
+     WCAG 1.4.11 требует для него 3:1, и старый --border давал 1.34:1. */
+  --line: #344041;
+  --edge: #637274;
+
+  /* Текст */
+  --text: #e2e9ea;
+  --muted: #96a3a4;
+
+  /* Состояния */
+  --on: #54dd7c;
+  --warn: #f7bc50;
+  --err: #f97770;
+
+  /* Действие. Раньше --accent отвечал ещё за ссылки и за состояние — теперь
+     только за первичную кнопку. Ссылки опознаются подчёркиванием, состояния —
+     своими цветами, фокус — своим. */
+  --accent: #0073a1;
+  --accent-hover: #007db0;
+  --focus: #59e4f3;
+
+  /* Ритм: шаг 4 px, пять ступеней с разными задачами. */
+  --s1: 4px;
+  --s2: 6px;
+  --s3: 10px;
+  --s4: 14px;
+
+  /* Радиус закреплён за ролью, а не за размером. Пилюль 999px больше нет. */
+  --r-tag: 4px;
+  --r-control: 6px;
+  --r-panel: 10px;
+
+  /* Интерфейс русский. system-ui на Windows — Segoe UI: кириллица полная, все
+     нужные начертания есть. Noto Sans — запасной вариант для Linux-сборок
+     Chromium, где system-ui может отдать шрифт без кириллицы. */
+  --font-ui: system-ui, "Segoe UI Variable Text", "Segoe UI", "Noto Sans", Arial,
+    sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Consolas, "Segoe UI Mono",
+    "DejaVu Sans Mono", monospace;
+
+  accent-color: var(--accent);
 }
 
 * {
@@ -17,144 +68,341 @@
 body {
   width: 300px;
   margin: 0;
-  font: 13px/1.4 system-ui, "Segoe UI", sans-serif;
+  font: 13px/1.45 var(--font-ui);
   background: var(--bg);
   color: var(--text);
+  /* Кириллица в Segoe UI при 13px выигрывает от чуть большего интерлиньяжа, чем
+     латиница: у неё выше x-height и почти нет выносных элементов. */
 }
+
+/* Одна видимая обводка фокуса на все элементы. Проверено: 11.75:1 на --bg,
+   3.48:1 поверх заливки --accent. */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* --- Шапка --------------------------------------------------------------- */
 
 header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
 }
 
 .logo {
   font-weight: 600;
+  letter-spacing: 0.005em;
 }
 
+/* --- Метка фонового компонента ------------------------------------------- */
+
+/* Была пилюля «белым по заливке» — три провала контраста из трёх. Схема
+   перевёрнута: подложка это цвет состояния на 12–16%, текст — сам цвет.
+   Тот же приём уже применялся в onboarding.css у .badge, так что это
+   переиспользование своего примитива, а не новая сущность. */
 .pill {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--off);
-  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 3px 7px 3px 6px;
+  border-radius: var(--r-tag);
+  background: #202a2b;
+  color: var(--muted);
+  font: 11px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  cursor: default;
 }
+
+/* Маркер рисуется CSS, а не глифом: состояние различается формой (кольцо /
+   диск / треугольник), а не только цветом, и не зависит от покрытия шрифта. */
+.pill::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+
 .pill--ok {
-  background: var(--on);
+  background: #1b382a;
+  color: var(--on);
 }
+.pill--ok::before {
+  border: none;
+  background: currentColor;
+}
+
+.pill--err {
+  background: #352828;
+  color: var(--err);
+  cursor: pointer;
+}
+.pill--err::before {
+  border: none;
+  border-radius: 0;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
 .pill--muted {
-  background: var(--off);
+  background: #202a2b;
   color: var(--muted);
 }
-.pill--err {
-  background: var(--err);
-}
+
+/* --- Содержимое ---------------------------------------------------------- */
 
 main {
-  padding: 12px;
+  padding: var(--s4);
 }
 
+/* Подпись стоит над полем, а не слева: прежние 54px подписи съедали пятую часть
+   300-пиксельного попапа, и длинные имена профилей обрезались. */
 .row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  gap: var(--s2);
+  margin: 0 0 var(--s4);
 }
+
 .row label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
   color: var(--muted);
-  min-width: 54px;
 }
+
 select {
-  flex: 1;
-  background: var(--panel);
+  width: 100%;
+  background: var(--ink);
   color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 6px 8px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-control);
+  padding: 7px 8px;
+  font: inherit;
+  transition: border-color 0.12s ease;
 }
+select:hover {
+  border-color: var(--text);
+}
+
+/* --- Баннер восстановления ----------------------------------------------- */
 
 .banner {
   display: block;
   width: 100%;
-  margin: 0 0 12px;
-  padding: 9px 10px;
-  border: 1px solid var(--err);
-  border-radius: 6px;
-  background: rgba(255, 107, 107, 0.12);
+  margin: 0 0 var(--s4);
+  padding: var(--s3);
+  /* 62% — минимум, при котором граница даёт 3:1 к фону: это кнопка, её контур
+     обязан быть различим. */
+  border: 1px solid rgba(249, 119, 112, 0.62);
+  border-radius: var(--r-control);
+  background: rgba(249, 119, 112, 0.14);
   color: var(--err);
   font: inherit;
   font-size: 12px;
   text-align: left;
   cursor: pointer;
+  transition: background-color 0.12s ease;
 }
 .banner:hover {
-  background: rgba(255, 107, 107, 0.2);
+  background: rgba(249, 119, 112, 0.22);
 }
-.hidden {
-  display: none;
-}
+
+/* --- Переключатель ------------------------------------------------------- */
 
 .toggle {
   width: 100%;
-  padding: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
+  padding: 11px;
+  font: 600 14px/1.2 var(--font-ui);
+  border: 1px solid transparent;
+  border-radius: var(--r-control);
   cursor: pointer;
   color: #fff;
-  transition: background 0.15s;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
+
+/* Два состояния различаются не только цветом, но и типом кнопки: залитая
+   первичная — «включить», обведённая нейтральная — «выключить». Заливка --off
+   даёт к фону только 1.83:1, поэтому границу элемента несёт контур (3.56:1). */
+/* :not(:disabled) обязателен. В Chromium :hover срабатывает и на выключенной
+   кнопке, а .toggle--off:hover и .toggle:disabled имеют равную специфичность —
+   исход решал бы порядок правил в файле. Тогда наведение на недоступную кнопку
+   давало бы приглушённый текст на активной заливке: 1.77:1. */
 .toggle--off {
   background: var(--accent);
 }
+.toggle--off:not(:disabled):hover {
+  background: var(--accent-hover);
+}
+
 .toggle--on {
   background: var(--off);
+  border-color: var(--edge);
+  color: var(--text);
 }
+.toggle--on:not(:disabled):hover {
+  background: #465254;
+}
+
+/* opacity: 0.5 гасила контраст вместе с цветом. Недоступная кнопка вместо этого
+   уходит в фон страницы — так она не спорит с рабочей «Выключить», у которой
+   такая же нейтральная роль, но приподнятая заливка. Текст остаётся читаемым:
+   6.86:1. */
 .toggle:disabled {
-  opacity: 0.5;
+  background: var(--bg);
+  border-color: var(--line);
+  color: var(--muted);
   cursor: default;
 }
 
+/* --- Строка состояния ---------------------------------------------------- */
+
+/* flex-start, а не center: текст ошибки занимает две строки, и по центру маркер
+   уезжал в межстрочный промежуток. margin-top выравнивает его по первой строке. */
 .status {
-  margin-top: 10px;
-  text-align: center;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Тот же словарь форм, что у метки компонента: кольцо — покой, диск — работа,
+   треугольник — отказ. */
+.status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+}
+
+/* Класс без модификатора означает проверку или восстановление связи. Пунктирное
+   кольцо отличает его от покоя и при выключенной анимации — движение здесь
+   дополнительный сигнал, а не единственный. */
+.status:not(.status--on):not(.status--err):not(.status--off):not(.status--warn)::before {
+  border-style: dashed;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* Прокси занят чужим расширением: не отказ, но требует внимания. Квадрат —
+   четвёртая форма в том же словаре, ни с чем не путается. */
+.status--warn {
+  color: var(--warn);
+}
+.status--warn::before {
+  border: none;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.status--off {
   color: var(--muted);
 }
+
 .status--on {
   color: var(--on);
 }
+.status--on::before {
+  border: none;
+  background: currentColor;
+}
+
 .status--err {
   color: var(--err);
 }
-
-.logs {
-  margin-top: 12px;
+.status--err::before {
+  border: none;
+  border-radius: 0;
+  background: currentColor;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
+
+@keyframes pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* --- Логи ---------------------------------------------------------------- */
+
+/* Отделены линией и отступом, а не ещё одной карточкой. */
+.logs {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
 .logs summary {
   cursor: pointer;
   color: var(--muted);
+  font-size: 12px;
+  transition: color 0.12s ease;
 }
+.logs summary:hover {
+  color: var(--text);
+}
+.logs summary::marker {
+  color: var(--edge);
+}
+
 #logView {
   max-height: 140px;
   overflow: auto;
-  background: #0f1116;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px;
-  margin: 8px 0 0;
-  font: 11px/1.35 ui-monospace, Consolas, monospace;
+  background: var(--ink);
+  border: 1px solid var(--edge);
+  border-radius: var(--r-panel);
+  padding: var(--s3);
+  margin: var(--s3) 0 var(--s1);
+  font: 11px/1.4 var(--font-mono);
   white-space: pre-wrap;
+  overflow-wrap: anywhere; /* длинный URL в логе не должен растягивать попап */
   color: var(--muted);
+  scrollbar-width: thin;
+  scrollbar-color: var(--edge) var(--ink);
 }
 
+/* --- Подвал -------------------------------------------------------------- */
+
 footer {
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
+  padding: var(--s3) var(--s4);
+  border-top: 1px solid var(--line);
 }
+
+/* Ссылка опознаётся подчёркиванием, а не цветом действия: --accent теперь
+   принадлежит только кнопке. */
 footer a {
-  color: var(--accent);
-  text-decoration: none;
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--edge);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.12s ease;
+}
+footer a:hover {
+  text-decoration-color: var(--text);
+}
+
+/* --- Служебное ----------------------------------------------------------- */
+
+/* Ставится и снимается из popup.js; !important защищает от порядка правил. */
+.hidden {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -24,7 +24,9 @@
            wrong, and clicking would fire enable() at a user who wanted off. -->
       <button id="toggleBtn" class="toggle toggle--off" disabled>Включить</button>
 
-      <div id="statusLine" class="status status--off">Выключено</div>
+      <!-- Нейтральное начальное значение. Зашитое сюда «Выключено» держалось до
+           конца опроса хоста и врало включённому пользователю. -->
+      <div id="statusLine" class="status">Проверяю…</div>
 
       <details class="logs">
         <summary>Логи ядра</summary>

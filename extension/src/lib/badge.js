@@ -30,10 +30,33 @@ async function baseBitmap(size) {
   return bmp;
 }
 
+// Те же три цвета состояний, что в интерфейсе (см. :root в popup.css); edge —
+// затемнённый тон той же кривой, он даёт объём радиальной заливке. Раньше здесь
+// стояли шесть значений из чужого стокового набора, не связанных с палитрой.
+//
+// Значение цвета одинаково на всех поверхностях: зелёный — работает, серый —
+// выключено, красный — отказ. Раньше точка была красной в выключенном состоянии
+// и жёлтой при ошибке, то есть одно и то же красное пятно означало на панели и
+// в попапе разное.
+//
+// Серый выбран по контрасту к обеим панелям Chrome: 3.78:1 к тёмной и 3.25:1 к
+// светлой — единственный уровень светлоты, проходящий 3:1 на обеих. Он заметно
+// тише зелёного и красного, и это правильно: покой не должен привлекать взгляд.
+//
+// Зелёный и серый пришлось развести. Первая версия брала зелёный прямо из
+// интерфейса (тон 162, мятный), а серый нёс бирюзовую примесь тона 205 — обе
+// точки оказывались в сине-зелёной области, и на семи пикселях, особенно на
+// светлой панели, различались с трудом. Теперь зелёный уведён в чистый зелёный
+// (тон 150) с предельной для гаммы насыщенностью, а серый сделан нейтральным.
+// warn — только для мигания при перехвате прокси чужим расширением, постоянным
+// состоянием точки он не бывает. Янтарный по природе светлый: опустить его до 3:1
+// на светлой панели значит увести в коричневый, где он перестаёт читаться как
+// «внимание». Здесь это допустимо — сигнал несёт мигание, а не контраст.
 const COLORS = {
-  on: { core: "#4ade80", edge: "#15803d" },
-  off: { core: "#f87171", edge: "#991b1b" },
-  error: { core: "#fbbf24", edge: "#b45309" },
+  on: { core: "#00d462", edge: "#006b2d" },
+  off: { core: "#757c7c", edge: "#2e3435" },
+  error: { core: "#f97770", edge: "#7f2021" },
+  warn: { core: "#e89d00", edge: "#6a4400" },
 };
 
 /**
@@ -103,8 +126,10 @@ export async function setStatusIcon(state) {
     console.warn("[badge] icon render failed, falling back to text:", e.message);
     try {
       await chrome.action.setBadgeText({ text: state === "on" ? "ON" : state === "error" ? "!" : "" });
+      // Цвет берётся из той же таблицы, что и точка: раньше здесь стояла своя
+      // пара литералов, и она разошлась с COLORS.
       await chrome.action.setBadgeBackgroundColor({
-        color: state === "on" ? "#2ecc71" : "#ff6b6b",
+        color: (COLORS[state] || COLORS.off).core,
       });
     } catch (_) {
       /* action API not ready yet */
@@ -113,6 +138,9 @@ export async function setStatusIcon(state) {
 }
 
 const PULSES = 5;
+// Тревога мигает дольше подключения: её никто не ждёт, и она должна успеть
+// поймать взгляд. 8 циклов ≈ 3.4 с.
+const ALERT_PULSES = 8;
 const CYCLE_MS = 420;
 const FRAME_MS = 60;
 
@@ -128,17 +156,17 @@ const FRAME_MS = 60;
  *
  * Always settles on the steady state, including when it is superseded.
  */
-export async function pulseConnecting(finalState = "on") {
+async function runPulse(pulseState, finalState, pulses) {
   const mine = ++generation;
   try {
     const frames = Math.round(CYCLE_MS / FRAME_MS);
-    for (let p = 0; p < PULSES; p++) {
+    for (let p = 0; p < pulses; p++) {
       for (let f = 0; f < frames; f++) {
         if (mine !== generation) return; // superseded — leave the icon to the new owner
         // Cosine ease: bright -> dim -> bright, without a hard on/off flicker.
         const phase = (f / frames) * Math.PI * 2;
         const opacity = 0.3 + 0.7 * ((1 + Math.cos(phase)) / 2);
-        await renderFrame(finalState, opacity);
+        await renderFrame(pulseState, opacity);
         await new Promise((r) => setTimeout(r, FRAME_MS));
       }
     }
@@ -150,4 +178,24 @@ export async function pulseConnecting(finalState = "on") {
       await setStatusIcon(finalState);
     }
   }
+}
+
+export function pulseConnecting(finalState = "on") {
+  return runPulse(finalState, finalState, PULSES);
+}
+
+/**
+ * Сигнал о перехвате прокси чужим расширением: мигает цветом тревоги и
+ * возвращается к настоящему состоянию.
+ *
+ * Мигать цветом, отличным от итогового, здесь обязательно. Перехват при
+ * включённом прокси значит, что трафик идёт напрямую, — это красный. При
+ * выключенном это предупреждение, а не отказ, — янтарный. Итоговое же состояние
+ * точки в обоих случаях своё.
+ *
+ * @param {"warn"|"error"} alertState чем мигать
+ * @param {"on"|"off"|"error"} finalState на чём успокоиться
+ */
+export function pulseAlert(alertState, finalState) {
+  return runPulse(alertState, finalState, ALERT_PULSES);
 }

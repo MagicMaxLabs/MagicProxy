@@ -1,0 +1,5 @@
+<!-- Исходник знака MagicProxy. Из него собираются extension/assets/icon*.png:
+     icon128 из этого файла, icon48 и icon32 из magicproxy-mark.svg,
+     icon16 из magicproxy-icon16.svg (ручная подгонка под пиксельную сетку).
+     Палитра — :root в extension/src/popup/popup.css. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><defs><linearGradient id="acc" gradientUnits="userSpaceOnUse" x1="12" y1="78" x2="84" y2="18"><stop offset="0" stop-color="#0073a1"/><stop offset="1" stop-color="#34b6f5"/></linearGradient></defs><g transform="translate(16,16)"><path d="M12 18 H54" stroke="#779194" stroke-width="12" stroke-linecap="round" fill="none"/><path d="M12 48 H54" stroke="#779194" stroke-width="12" stroke-linecap="round" fill="none"/><path d="M12 78 H42 C64.36 78.00 63.05 43.98 71.15 29.36" stroke="url(#acc)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M 83.000 4.000 Q 85.640 12.360 94.000 15.000 Q 85.640 17.640 83.000 26.000 Q 80.360 17.640 72.000 15.000 Q 80.360 12.360 83.000 4.000 Z" fill="#0091ca"/></g></svg>
