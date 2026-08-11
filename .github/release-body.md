@@ -4,10 +4,12 @@
 
 1. Download **MagicProxy-Setup.exe** below and run it. Everything is included —
    nothing else to download, no versions to check.
-2. Add the extension to your browser. It is still under review in the Chrome Web
-   Store, so for now load it from **MagicProxy-windows-amd64.zip** below: unpack it,
-   open `chrome://extensions` (or `brave://extensions`), turn on Developer mode and
-   use **Load unpacked** on the `extension` folder.
+2. Add the extension from the
+   [Chrome Web Store](https://chromewebstore.google.com/detail/gpkpglcfdlodjbabgjackonmfpemaomg).
+   The listing is unlisted, so open it by link — store search will not find it. If you
+   would rather not use the store, unpack **MagicProxy-windows-amd64.zip** below, open
+   `chrome://extensions` (or `brave://extensions`), turn on Developer mode and use
+   **Load unpacked** on the `extension` folder.
 3. Open the extension, paste your server link, switch it on.
 
 The installer needs no administrator rights and installs only for your user account.

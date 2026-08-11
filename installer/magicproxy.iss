@@ -72,10 +72,10 @@ Name: "openextension"; Description: "{cm:OpenExtensionPage}"; Flags: checkedonce
 [Run]
 ; Hands the user from "installed" to the extension. Without this the wizard just
 ; ends and nothing tells them the browser half still has to be added.
-; TODO: switch to https://chromewebstore.google.com/detail/gpkpglcfdlodjbabgjackonmfpemaomg
-; once the Web Store listing is public; until then that URL 404s, so point at the
-; install instructions, which work today.
-Filename: "https://github.com/magicmaxlabs/MagicProxy#установка"; \
+; Points straight at the Web Store listing, published 11 Aug 2026. The listing is
+; unlisted, so store search will not find it — the link is the only way in, which is
+; exactly what this task hands the user.
+Filename: "https://chromewebstore.google.com/detail/gpkpglcfdlodjbabgjackonmfpemaomg"; \
   Description: "{cm:OpenExtensionPage}"; \
   Flags: nowait postinstall shellexec skipifsilent; Tasks: openextension
 
