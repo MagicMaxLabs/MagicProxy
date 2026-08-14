@@ -16,26 +16,26 @@
       <button id="hostBanner" class="banner hidden"></button>
 
       <div class="row">
-        <label for="profileSelect">Профиль</label>
+        <label for="profileSelect" data-i18n="profileLabel">Профиль</label>
         <select id="profileSelect"></select>
       </div>
 
       <!-- Starts disabled: until intent is read from storage the label would be
            wrong, and clicking would fire enable() at a user who wanted off. -->
-      <button id="toggleBtn" class="toggle toggle--off" disabled>Включить</button>
+      <button id="toggleBtn" class="toggle toggle--off" disabled data-i18n="toggleOff">Включить</button>
 
       <!-- Нейтральное начальное значение. Зашитое сюда «Выключено» держалось до
            конца опроса хоста и врало включённому пользователю. -->
-      <div id="statusLine" class="status">Проверяю…</div>
+      <div id="statusLine" class="status" data-i18n="checking">Проверяю…</div>
 
       <details class="logs">
-        <summary>Логи ядра</summary>
+        <summary data-i18n="coreLogs">Логи ядра</summary>
         <pre id="logView"></pre>
       </details>
     </main>
 
     <footer>
-      <a id="optionsLink" href="#">Профили и настройки →</a>
+      <a id="optionsLink" href="#" data-i18n="optionsLink">Профили и настройки →</a>
     </footer>
 
     <script type="module" src="popup.js"></script>

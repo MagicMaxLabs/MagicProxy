@@ -35,6 +35,35 @@ export async function deleteProfile(id) {
   if (active === id) await setActiveProfileId(null);
 }
 
+// Отпечаток профиля для дедупликации: тип, адрес и учётные данные. Имя в
+// отпечаток не входит — провайдеры меняют «имя» записи в подписке при каждом
+// обновлении, и по имени один и тот же сервер считался бы новым.
+function fingerprint(p) {
+  return [p.type, p.server, p.port, p.uuid || p.password || p.username || ""].join("|");
+}
+
+/**
+ * Импорт списка профилей с дедупликацией. Повторный импорт той же подписки
+ * раньше удваивал все записи — теперь совпадающие с существующими пропускаются.
+ * @returns {{added: object[], skipped: number}}
+ */
+export async function importProfiles(list) {
+  const existing = await listProfiles();
+  const seen = new Set(existing.map(fingerprint));
+  const added = [];
+  let skipped = 0;
+  for (const p of list) {
+    const fp = fingerprint(p);
+    if (seen.has(fp)) {
+      skipped++;
+      continue;
+    }
+    seen.add(fp);
+    added.push(await saveProfile(p));
+  }
+  return { added, skipped };
+}
+
 export async function getActiveProfileId() {
   const data = await chrome.storage.local.get(STORAGE_KEYS.ACTIVE_PROFILE_ID);
   return data[STORAGE_KEYS.ACTIVE_PROFILE_ID] || null;

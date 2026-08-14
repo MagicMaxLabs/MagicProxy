@@ -1,13 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "MagicProxy — per-profile proxy for your own server",
+  "name": "__MSG_extName__",
   "short_name": "MagicProxy",
   "version": "0.1.0",
-  "description": "Route one browser profile through your own proxy server. Other profiles and the rest of your system stay direct.",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "minimum_chrome_version": "120",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApMfTKTo1xLhhVEgxQw/CZQPFlkjcQJziVbqSPxr7rPcIlsL4c6L8EQ+KoZ/J3iI544cKtFRjIpBNPDaoPl/Cr9CaiItXwxUdG4ardBQGMd/eA2stg+MupVpjDH/NqJXGg5VA+TbOk8T2jlAyAZHh9HkWZOGZAegjl+UfA+ZHFHq+JeQQEbIlfLgVjS2+xQmh1DQyaEInli8MguGI/k+gjVVXPQVwknkBaJ3u3t3Rdwae16Ap+J3WIZxWFNEvn7oCM43LS0zMKqmYF6OK1Em3SnX6agLFr4QV8xQzOpeCHdAFmA0hM3fLzXkFtl4r/NuSeA3xGBlRqADVtAju1hEKbQIDAQAB",
   "permissions": [
     "proxy",
+    "privacy",
     "storage",
     "nativeMessaging",
     "alarms"

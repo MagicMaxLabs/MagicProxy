@@ -27,6 +27,12 @@ GPLv3 §6 requires that the corresponding source code be made available to you.
 Every MagicProxy release links to the source archive for the exact sing-box version that
 release contains, from the same release page, at no charge.
 
+If you later update the core from inside MagicProxy ("Check for updates"), the newer
+binary is downloaded directly from SagerNet's own release page — that copy is conveyed
+to you by SagerNet, and its corresponding source is published alongside it there. This
+directory continues to describe the version originally bundled with your MagicProxy
+release.
+
 If that link is ever unreachable, contact magicmaxlabs@gmail.com and the corresponding
 source will be provided by another means at no charge.
 

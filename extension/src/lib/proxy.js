@@ -8,6 +8,7 @@
 // avoids DNS leaks.
 
 import { PROXY_MODE } from "../common/constants.js";
+import { t } from "./i18n.js";
 
 const DEFAULT_BYPASS = [
   "localhost",
@@ -33,9 +34,21 @@ function fixedServersConfig(host, port, bypass = []) {
  * @param {number} port
  * @param {{proxyDomains?: string[], directDomains?: string[]}} rules
  */
+// «*.youtube.com» интуитивно означает «весь Ютуб», но shExpMatch с этим шаблоном
+// НЕ покрывает голый youtube.com — а ровно такой шаблон стоит плейсхолдером в
+// нашем же поле настроек. Дописываем корень рядом с маской сами.
+function expandWildcards(list) {
+  const out = [];
+  for (const d of list || []) {
+    out.push(d);
+    if (d.startsWith("*.") && d.length > 2) out.push(d.slice(2));
+  }
+  return out;
+}
+
 function pacConfig(host, port, rules = {}) {
-  const proxyDomains = rules.proxyDomains || [];
-  const directDomains = rules.directDomains || [];
+  const proxyDomains = expandWildcards(rules.proxyDomains);
+  const directDomains = expandWildcards(rules.directDomains);
   const proxyStr = `SOCKS5 ${host}:${Number(port)}`;
   const script = `
 function FindProxyForURL(url, host) {
@@ -76,11 +89,44 @@ export class ProxyControlError extends Error {
   constructor(levelOfControl) {
     super(
       levelOfControl === "controlled_by_other_extensions"
-        ? "прокси управляется другим расширением — отключите его и попробуйте снова"
-        : "браузер не позволяет управлять настройками прокси в этом профиле"
+        ? t("errProxyForeign")
+        : t("errProxyBlocked")
     );
     this.name = "ProxyControlError";
     this.levelOfControl = levelOfControl;
+  }
+}
+
+// --- WebRTC ------------------------------------------------------------------
+// WebRTC шлёт UDP (STUN) напрямую, мимо настроек прокси: странице достаточно
+// пяти строк JS, чтобы прочитать реальный публичный IP из ICE-кандидатов — при
+// включённом прокси это единственный штатный способ его узнать. Политика
+// disable_non_proxied_udp разрешает WebRTC только тот UDP, который идёт через
+// прокси; Chrome не гонит UDP через SOCKS5, так что фактически WebRTC остаётся
+// TURN-relay по TCP — через туннель. Ставится ТОЛЬКО при включённом прокси и
+// снимается вместе с ним: цена (качество звонков) платится ровно там, где
+// пользователь сам выбрал «весь трафик через сервер».
+
+/** @returns {Promise<boolean>} true, если политика реально действует. */
+async function applyWebRTCGuard() {
+  const setting = chrome.privacy.network.webRTCIPHandlingPolicy;
+  await setting.set({ value: "disable_non_proxied_udp", scope: "regular" });
+  // Как и chrome.proxy, set() «успешен» даже когда распоряжается расширение
+  // старше нас. Сверяем действующее значение: если чужое расширение держит ту
+  // же политику — защита работает, чьими руками — неважно.
+  const st = await setting.get({});
+  return st.value === "disable_non_proxied_udp";
+}
+
+async function clearWebRTCGuard() {
+  try {
+    const setting = chrome.privacy.network.webRTCIPHandlingPolicy;
+    const st = await setting.get({});
+    if (st.levelOfControl === "controlled_by_this_extension") {
+      await setting.clear({ scope: "regular" });
+    }
+  } catch (e) {
+    console.warn("[proxy] clearWebRTCGuard failed:", e.message);
   }
 }
 
@@ -111,7 +157,13 @@ export async function apply({ mode, host = "127.0.0.1", port, rules = {}, bypass
     }
     throw new ProxyControlError(state.levelOfControl);
   }
-  return config;
+  // Прокси наш — закрываем и WebRTC. Отказ защиты не отменяет туннель (он уже
+  // работает), но должен быть виден вызывающему: тот пишет предупреждение в логи.
+  const webrtcGuarded = await applyWebRTCGuard().catch((e) => {
+    console.warn("[proxy] applyWebRTCGuard failed:", e.message);
+    return false;
+  });
+  return { config, webrtcGuarded };
 }
 
 /**
@@ -126,6 +178,11 @@ export async function apply({ mode, host = "127.0.0.1", port, rules = {}, bypass
  * результата, и запасной путь.
  */
 export async function clear() {
+  // WebRTC-политика живёт и умирает вместе с прокси. Снятие здесь, а не в
+  // каждом вызывающем: у clear() много путей (выключение, откат отменённого
+  // прохода, страховка при старте воркера), и все обязаны вернуть звонкам
+  // обычное поведение.
+  await clearWebRTCGuard();
   try {
     await chrome.proxy.settings.clear({ scope: "regular" });
   } catch (e) {

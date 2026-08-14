@@ -16,15 +16,29 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
+    # Third-party actions are pinned to commit SHAs, not floating tags: a moved
+    # tag in a compromised action repo must not be able to change what builds
+    # our releases. The comment keeps the human-readable version.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.22"
           # The host has no third-party dependencies, so there is no go.sum and
           # nothing to cache. Without this, every run logs a "cache failed" warning.
           cache: false
+
+      # The quality gate this workflow never had: vet and the existing tests.
+      - name: Vet and test native host
+        shell: pwsh
+        run: |
+          Push-Location native-host
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { throw "go vet failed" }
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw "go test failed" }
+          Pop-Location
 
       # Everything downstream stamps this version, so it is derived once, here.
       # Without it every release reported 0.1.0 — and the Chrome Web Store rejects
@@ -72,6 +86,12 @@ jobs:
           if (-not $asset) { throw "No windows-amd64 asset for sing-box $tag" }
           $zip = "$env:TEMP/sing-box.zip"
           Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -Headers $headers
+          # The version pin alone trusts GitHub's TLS; the hash pin trusts nothing.
+          # sing-box publishes no checksums, so this value was computed once from a
+          # download cross-checked against a locally verified binary, and committed.
+          $expected = (Get-Content third-party/sing-box/SHA256-windows-amd64 -Raw).Trim()
+          $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) { throw "sing-box zip SHA256 mismatch: got $actual, pinned $expected" }
           $tmp = "$env:TEMP/sb"
           Expand-Archive -Path $zip -DestinationPath $tmp -Force
           $exe = Get-ChildItem -Path $tmp -Recurse -Filter "sing-box.exe" | Select-Object -First 1
@@ -140,14 +160,14 @@ jobs:
       # otherwise the whole release job would fail on a test tag.
       - name: Attest build provenance
         if: ${{ !github.event.repository.private }}
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1
         with:
           subject-path: |
             installer/Output/MagicProxy-Setup.exe
             MagicProxy-windows-amd64.zip
 
       - name: Publish release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
             installer/Output/MagicProxy-Setup.exe

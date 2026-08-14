@@ -1,5 +1,6 @@
 import { listProfiles, getActiveProfileId } from "../lib/profiles.js";
 import { STORAGE_KEYS } from "../common/constants.js";
+import { t, localizeDom } from "../lib/i18n.js";
 
 const el = {
   hostStatus: document.getElementById("hostStatus"),
@@ -11,20 +12,21 @@ const el = {
   optionsLink: document.getElementById("optionsLink"),
 };
 
-// Known native-messaging failures are surfaced in English by Chrome. Users of a
-// Russian UI should not be reading "Specified native messaging host not found."
+// Known native-messaging and host failures arrive as English technical text
+// (Chrome's own errors plus the Go host's messages). The user reads them in
+// their UI language instead.
 function humanError(msg = "") {
   // Must stay narrow: a bare /not found/ also matches the core's own
   // "sing-box binary not found near …", which would tell a user whose host IS
   // installed that it is not — contradicting the banner right above it.
-  if (/native messaging host not found/i.test(msg))
-    return "Фоновый компонент не установлен";
-  if (/sing-box binary not found/i.test(msg))
-    return "Сетевое ядро не найдено — возможно, его удалил антивирус";
-  if (/disconnected|Native host has exited/i.test(msg))
-    return "Фоновый компонент неожиданно завершился";
+  if (/native messaging host not found/i.test(msg)) return t("errHostMissing");
+  if (/sing-box binary not found/i.test(msg)) return t("errCoreMissing");
+  if (/disconnected|Native host has exited/i.test(msg)) return t("errHostDied");
   if (/Access to the specified native messaging host is forbidden/i.test(msg))
-    return "Фоновый компонент не разрешает подключение этому расширению";
+    return t("errHostForbidden");
+  // Хостовая проверка ключа SSH (см. config.go) — сообщение стабильное, по нему
+  // и ловим.
+  if (/ssh: hostKey is not set/i.test(msg)) return t("errSshHostKey");
   return msg;
 }
 
@@ -68,10 +70,10 @@ async function refreshHostStatus() {
   } else {
     el.hostStatus.textContent = "host ✗";
     el.hostStatus.className = "pill pill--err";
-    el.hostStatus.title = resp.error || "сетевое ядро недоступно";
+    el.hostStatus.title = resp.error || t("hostUnavailable");
     el.hostBanner.textContent = resp.ok
-      ? "Сетевое ядро не запускается — открыть инструкцию"
-      : "Фоновый компонент не установлен — установить";
+      ? t("bannerCoreBroken")
+      : t("bannerHostMissing");
     el.hostBanner.classList.remove("hidden");
   }
 }
@@ -84,7 +86,7 @@ async function loadProfiles() {
   el.profileSelect.innerHTML = "";
   if (profiles.length === 0) {
     const opt = document.createElement("option");
-    opt.textContent = "— нет профилей —";
+    opt.textContent = t("noProfiles");
     opt.value = "";
     el.profileSelect.appendChild(opt);
     el.toggleBtn.disabled = true;
@@ -117,26 +119,26 @@ function applyToggleAvailability() {
 
 function renderState(s) {
   desiredOn = !!s.on;
-  el.toggleBtn.textContent = desiredOn ? "Выключить" : "Включить";
+  el.toggleBtn.textContent = desiredOn ? t("toggleOn") : t("toggleOff");
   el.toggleBtn.className = desiredOn ? "toggle toggle--on" : "toggle toggle--off";
   // Intent just changed, so the off-switch exemption may now apply.
   applyToggleAvailability();
   if (s.lastError) {
-    el.statusLine.textContent = `Ошибка: ${humanError(s.lastError)}`;
+    el.statusLine.textContent = t("errPrefix", [humanError(s.lastError)]);
     el.statusLine.className = "status status--err";
   } else if (desiredOn && s.running) {
-    el.statusLine.textContent = `Активно · 127.0.0.1:${s.port}`;
+    el.statusLine.textContent = t("statusActive", [String(s.port)]);
     el.statusLine.className = "status status--on";
   } else if (s.healing) {
-    el.statusLine.textContent = "Восстанавливаю соединение…";
+    el.statusLine.textContent = t("statusHealing");
     el.statusLine.className = "status";
   } else if (s.foreignProxy) {
     // Прокси профиля держит другое расширение. Снять его мы не можем, но молчать
     // нельзя: без этой строки попап писал бы «Выключено», пока браузер не работает.
-    el.statusLine.textContent = "Выключено. Прокси профиля занят другим расширением";
+    el.statusLine.textContent = t("statusOffForeign");
     el.statusLine.className = "status status--warn";
   } else {
-    el.statusLine.textContent = "Выключено";
+    el.statusLine.textContent = t("statusOff");
     el.statusLine.className = "status status--off";
   }
 }
@@ -167,14 +169,14 @@ el.profileSelect.addEventListener("change", async () => {
   el.profileSelect.disabled = true;
   if (wasOn) {
     el.toggleBtn.disabled = true;
-    el.statusLine.textContent = "Переключаю профиль…";
+    el.statusLine.textContent = t("statusSwitching");
     el.statusLine.className = "status";
   }
   const resp = await send("setProfile", { profileId: id });
   busy = false;
   el.profileSelect.disabled = false;
   if (!resp.ok) {
-    el.statusLine.textContent = `Ошибка: ${humanError(resp.error)}`;
+    el.statusLine.textContent = t("errPrefix", [humanError(resp.error)]);
     el.statusLine.className = "status status--err";
   }
   await refreshState();
@@ -188,7 +190,7 @@ el.toggleBtn.addEventListener("click", async () => {
   // Пока запрос в полёте, список профилей заблокирован: иначе выбор уедет вперёд
   // намерения, и на экране будет один профиль, а в работе другой.
   el.profileSelect.disabled = true;
-  el.statusLine.textContent = desiredOn ? "Останавливаю…" : "Запускаю…";
+  el.statusLine.textContent = desiredOn ? t("statusStopping") : t("statusStarting");
   el.statusLine.className = "status";
   const resp = desiredOn
     ? await send("disable")
@@ -197,7 +199,7 @@ el.toggleBtn.addEventListener("click", async () => {
   el.toggleBtn.disabled = false;
   el.profileSelect.disabled = false;
   if (!resp.ok) {
-    el.statusLine.textContent = `Ошибка: ${humanError(resp.error)}`;
+    el.statusLine.textContent = t("errPrefix", [humanError(resp.error)]);
     el.statusLine.className = "status status--err";
   }
   await refreshState();
@@ -217,18 +219,19 @@ el.hostStatus.addEventListener("click", () => {
 });
 
 (async function init() {
+  localizeDom();
   // Read the persisted intent straight from storage first. Everything else has to
   // talk to the native host, which can take up to 15 s; during that window the
   // button would otherwise read "Включить" to a user who is already ON.
   const d = await chrome.storage.local.get(STORAGE_KEYS.DESIRED);
   desiredOn = !!(d[STORAGE_KEYS.DESIRED] && d[STORAGE_KEYS.DESIRED].on);
-  el.toggleBtn.textContent = desiredOn ? "Выключить" : "Включить";
+  el.toggleBtn.textContent = desiredOn ? t("toggleOn") : t("toggleOff");
   el.toggleBtn.className = desiredOn ? "toggle toggle--on" : "toggle toggle--off";
   // Строка состояния тоже обязана отражать намерение сразу. Раньше чинилась только
   // надпись на кнопке, а строка держала разметочное «Выключено» до конца опроса
   // хоста — а это круг Native Messaging на разбуженном воркере. Включённый
   // пользователь секунду видел, что у него всё выключено.
-  el.statusLine.textContent = desiredOn ? "Проверяю соединение…" : "Выключено";
+  el.statusLine.textContent = desiredOn ? t("statusCheckingConn") : t("statusOff");
   el.statusLine.className = desiredOn ? "status" : "status status--off";
   // An ON user can act immediately; an OFF user waits for the host probe.
   if (desiredOn) el.toggleBtn.disabled = false;

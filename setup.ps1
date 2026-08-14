@@ -102,6 +102,11 @@ if (-not (Test-Path $SingBox)) {
   $zip = Join-Path $env:TEMP $asset.name
   $tmp = Join-Path $env:TEMP "magicproxy-singbox"
   Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zip -UseBasicParsing -Headers $headers
+  # Пин по хешу, не только по версии: sing-box контрольных сумм не публикует,
+  # поэтому эталон посчитан один раз и закоммичен рядом с VERSION.
+  $expected = (Get-Content (Join-Path $Root "third-party\sing-box\SHA256-windows-amd64") -Raw).Trim()
+  $actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLower()
+  if ($actual -ne $expected) { throw "sing-box zip SHA256 mismatch: got $actual, pinned $expected" }
   if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
   Expand-Archive -Path $zip -DestinationPath $tmp -Force
   $exe = Get-ChildItem -Path $tmp -Recurse -Filter "sing-box.exe" | Select-Object -First 1

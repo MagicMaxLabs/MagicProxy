@@ -4,72 +4,72 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="options.css" />
-    <title>MagicProxy — настройки</title>
+    <title>MagicProxy</title>
   </head>
   <body>
     <h1>🪄 MagicProxy</h1>
 
     <section>
-      <h2>Импорт</h2>
-      <p class="hint">
+      <h2 data-i18n="importTitle">Импорт</h2>
+      <p class="hint" data-i18n="importHint">
         Вставьте одну или несколько ссылок (vless://, vmess://, trojan://, ss://,
         hysteria2://, tuic://) — по одной на строку — или base64-подписку.
       </p>
       <textarea id="importBox" rows="4" placeholder="vless://…"></textarea>
       <div class="actions">
-        <button id="importBtn">Импортировать</button>
+        <button id="importBtn" data-i18n="importBtn">Импортировать</button>
         <span id="importResult" class="hint"></span>
       </div>
     </section>
 
     <section>
-      <h2>Профили</h2>
+      <h2 data-i18n="profilesTitle">Профили</h2>
       <table id="profileTable">
         <thead>
           <tr>
             <th></th>
-            <th>Имя</th>
-            <th>Тип</th>
-            <th>Сервер</th>
+            <th data-i18n="thName">Имя</th>
+            <th data-i18n="thType">Тип</th>
+            <th data-i18n="thServer">Сервер</th>
             <th></th>
           </tr>
         </thead>
         <tbody id="profileBody"></tbody>
       </table>
       <div class="actions">
-        <button id="addBtn">+ Новый профиль (JSON)</button>
-        <button id="exportBtn" class="secondary">Экспорт профилей (JSON)</button>
+        <button id="addBtn" data-i18n="addBtn">+ Новый профиль (JSON)</button>
+        <button id="exportBtn" class="secondary" data-i18n="exportBtn">Экспорт профилей (JSON)</button>
         <span id="exportResult" class="hint"></span>
       </div>
     </section>
 
     <section>
-      <h2>Маршрутизация</h2>
+      <h2 data-i18n="routingTitle">Маршрутизация</h2>
       <div class="row">
-        <label>Режим</label>
+        <label data-i18n="routingModeLabel">Режим</label>
         <select id="routingMode">
-          <option value="all">Весь трафик через прокси</option>
-          <option value="rules">По правилам (PAC)</option>
+          <option value="all" data-i18n="routingModeAll">Весь трафик через прокси</option>
+          <option value="rules" data-i18n="routingModeRules">По правилам (PAC)</option>
         </select>
       </div>
       <div id="rulesFields">
-        <label class="hint">Через прокси только эти домены (по одному на строку; пусто = всё кроме direct-списка):</label>
+        <label class="hint" data-i18n="proxyDomainsLabel">Через прокси только эти домены (по одному на строку; пусто = всё кроме direct-списка):</label>
         <textarea id="proxyDomains" rows="3" placeholder="example.com&#10;*.youtube.com"></textarea>
-        <label class="hint">Всегда напрямую (bypass):</label>
+        <label class="hint" data-i18n="directDomainsLabel">Всегда напрямую (bypass):</label>
         <textarea id="directDomains" rows="3" placeholder="*.ru&#10;localhost"></textarea>
       </div>
       <div class="actions">
-        <button id="saveRoutingBtn">Сохранить маршрутизацию</button>
+        <button id="saveRoutingBtn" data-i18n="saveRoutingBtn">Сохранить маршрутизацию</button>
         <span id="routingResult" class="hint"></span>
       </div>
     </section>
 
     <section>
-      <h2>Обновления ядра</h2>
-      <p class="hint">Ядро sing-box отвечает за все протоколы. Держи его свежим.</p>
+      <h2 data-i18n="updatesTitle">Обновления ядра</h2>
+      <p class="hint" data-i18n="updatesHint">Ядро sing-box отвечает за все протоколы. Держи его свежим.</p>
       <div class="actions">
-        <button id="checkUpdateBtn">Проверить обновления</button>
-        <button id="updateCoreBtn" class="secondary" disabled>Обновить ядро</button>
+        <button id="checkUpdateBtn" data-i18n="checkUpdateBtn">Проверить обновления</button>
+        <button id="updateCoreBtn" class="secondary" disabled data-i18n="updateCoreBtn">Обновить ядро</button>
         <span id="updateResult" class="hint"></span>
       </div>
     </section>
@@ -78,27 +78,26 @@
          2026: описание в листинге его НЕ заменяет, раскрытие должно быть внутри
          самого расширения. -->
     <section>
-      <h2>Данные</h2>
-      <p class="hint">
+      <h2 data-i18n="dataTitle">Данные</h2>
+      <p class="hint" data-i18n-html="dataStored">
         <strong>Хранится в этом профиле браузера.</strong> Профили серверов вместе с
         данными для подключения — UUID, пароли, ключи, — правила маршрутизации и
         состояние переключателя. Всё лежит в локальном хранилище расширения, не
         синхронизируется и никуда не отправляется: серверов у проекта нет.
       </p>
-      <p class="hint">
+      <p class="hint" data-i18n-html="dataPassed">
         <strong>Передаётся фоновому компоненту</strong> на вашем же компьютере:
         команды «запустить» и «остановить», конфигурация выбранного сервера и ответы
         о состоянии. История посещений, адреса страниц и их содержимое ему не
         передаются никогда.
       </p>
-      <p class="hint">
+      <p class="hint" data-i18n-html="dataNever">
         <strong>Не собирается вовсе:</strong> аккаунтов нет, телеметрии нет,
         аналитики нет. Расширение не запрашивает доступ к сайтам и ничего не внедряет
         в страницы.
       </p>
       <p class="hint">
-        Подробнее — <a id="privacyLink" href="#">политика приватности</a> и
-        <a id="securityLink" href="#">модель угроз</a>.
+        <span data-i18n="dataMoreLead">Подробнее — </span><a id="privacyLink" href="#" data-i18n="dataMorePrivacy">политика приватности</a><span data-i18n="dataMoreAnd"> и </span><a id="securityLink" href="#" data-i18n="dataMoreSecurity">модель угроз</a>.
       </p>
     </section>
 
@@ -107,9 +106,9 @@
       <div class="modal">
         <h3 id="editorTitle">Профиль</h3>
         <div class="row">
-          <label for="editorType">Шаблон</label>
+          <label for="editorType" data-i18n="editorTemplateLabel">Шаблон</label>
           <select id="editorType">
-            <option value="">— вставить шаблон типа —</option>
+            <option value="" data-i18n="editorTemplatePlaceholder">— вставить шаблон типа —</option>
             <option value="vless">VLESS + Reality</option>
             <option value="vless-ws">VLESS + WS + TLS</option>
             <option value="vmess">VMess</option>
@@ -123,14 +122,14 @@
             <option value="wireguard">WireGuard</option>
             <option value="ssh">SSH</option>
             <option value="socks">SOCKS5 / SOCKS4</option>
-            <option value="http">HTTP / HTTPS прокси</option>
+            <option value="http" data-i18n="optHttpProxy">HTTP / HTTPS прокси</option>
           </select>
         </div>
         <textarea id="editorJson" rows="18" spellcheck="false"></textarea>
         <div class="actions">
-          <button id="editorTest">Проверить конфиг</button>
-          <button id="editorSave">Сохранить</button>
-          <button id="editorCancel" class="secondary">Отмена</button>
+          <button id="editorTest" data-i18n="editorTest">Проверить конфиг</button>
+          <button id="editorSave" data-i18n="editorSave">Сохранить</button>
+          <button id="editorCancel" class="secondary" data-i18n="editorCancel">Отмена</button>
           <span id="editorResult" class="hint"></span>
         </div>
       </div>

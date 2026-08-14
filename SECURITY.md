@@ -28,17 +28,28 @@ browsers, and every other application on your computer keep their normal
 connection. That is the entire point of the product, but it means "MagicProxy is
 on" never means "this machine is proxied".
 
-**WebRTC can still reveal your real IP.** Chromium's WebRTC stack sends UDP
-directly and is not governed by proxy settings. A page that uses WebRTC may observe
-your real address even while the proxy is on. If that matters to you, disable
-WebRTC or use an extension that blocks it. MagicProxy does not currently manage
-this, and we would rather say so than let you assume otherwise.
+**WebRTC is forced through the proxy while it is on.** Chromium's WebRTC stack
+normally sends UDP directly, bypassing proxy settings — a page could read your
+real address from ICE candidates even with the proxy on. While MagicProxy is
+enabled it sets this profile's WebRTC policy to `disable_non_proxied_udp`, so
+WebRTC traffic either goes through the tunnel (TURN over TCP) or does not happen;
+the policy is removed when the proxy is switched off. Two consequences to know
+about: calls in the proxied profile may connect slower or degrade (they lose
+direct UDP), and if another extension controls the WebRTC policy, MagicProxy
+cannot override it — it reports this in the core log instead. Verify yourself at
+browserleaks.com/webrtc with the proxy on.
 
 **DNS.** Destination hostnames are resolved through the tunnel, so they are not
 exposed to your local network. One exception is unavoidable: the hostname of your
 own proxy server is resolved locally by your operating system's resolver, because
 that lookup has to happen before the tunnel exists. Use a server address that is
 not itself subject to DNS interference, or specify it by IP.
+
+**SSH profiles verify the server's host key — and refuse to run without one.**
+An SSH tunnel that accepts any host key hands your password to the first
+man-in-the-middle on the path, so the `hostKey` field is mandatory: obtain it
+with `ssh-keyscan -t ed25519 <server>` and paste the `ssh-ed25519 AAAA…` line
+into the profile. A profile without it will not start.
 
 **Credentials are stored unencrypted on your device.** Server addresses, UUIDs,
 passwords and keys live in this browser profile's `chrome.storage.local`, protected

@@ -2,12 +2,14 @@ import {
   listProfiles,
   saveProfile,
   deleteProfile,
+  importProfiles,
   getActiveProfileId,
   getRouting,
   setRouting,
 } from "../lib/profiles.js";
 import { parseSubscription, looksLikeSubscriptionUrl } from "../lib/parse.js";
 import { PRIVACY_URL, SECURITY_URL } from "../common/constants.js";
+import { t, localizeDom } from "../lib/i18n.js";
 
 const $ = (id) => document.getElementById(id);
 
@@ -42,12 +44,12 @@ async function renderProfiles() {
       radio.disabled = true;
       const resp = await send("setProfile", { profileId: p.id });
       radio.disabled = false;
-      if (!resp.ok) alert(`Не удалось переключить профиль: ${resp.error}`);
+      if (!resp.ok) alert(t("switchFailed", [resp.error]));
     });
     tdRadio.appendChild(radio);
 
     const tdName = document.createElement("td");
-    tdName.textContent = p.name || "(без имени)";
+    tdName.textContent = p.name || t("noName");
     const tdType = document.createElement("td");
     tdType.textContent = p.type;
     const tdServer = document.createElement("td");
@@ -58,17 +60,17 @@ async function renderProfiles() {
     const edit = document.createElement("button");
     edit.type = "button";
     edit.className = "link";
-    edit.textContent = "изменить";
+    edit.textContent = t("rowEdit");
     edit.addEventListener("click", () => openEditor(p));
     const del = document.createElement("button");
     del.type = "button";
     del.className = "link danger";
-    del.textContent = "удалить";
+    del.textContent = t("rowDelete");
     del.addEventListener("click", async () => {
       // Подтверждение обязательно: профиль — это выданные однажды UUID и ключи,
       // копии которых у пользователя может больше не быть.
       const label = p.name ? `«${p.name}»` : `${p.server}:${p.port}`;
-      if (!confirm(`Удалить профиль ${label}? Данные для подключения будут потеряны.`)) return;
+      if (!confirm(t("confirmDelete", [label]))) return;
       await deleteProfile(p.id);
       renderProfiles();
     });
@@ -89,18 +91,18 @@ $("importBtn").addEventListener("click", async () => {
   // proxy on port 443 and imported as a profile that can never connect. Fetching
   // subscriptions is not implemented yet, so say so plainly rather than lie.
   if (looksLikeSubscriptionUrl(text)) {
-    res.textContent =
-      "Это ссылка на подписку. Загрузка подписок по ссылке пока не поддерживается — открой её в браузере и вставь сюда её содержимое.";
+    res.textContent = t("importSubscriptionUrl");
     res.className = "hint bad";
     return;
   }
 
   const { profiles, errors } = parseSubscription(text);
-  for (const p of profiles) await saveProfile(p);
+  const { added, skipped } = await importProfiles(profiles);
   // A bare count ("ошибок: 1") tells the user nothing about what to fix.
   res.textContent =
-    `Импортировано: ${profiles.length}` +
-    (errors.length ? ` · не разобрано ${errors.length}: ${errors[0].error}` : "");
+    t("importedCount", [String(added.length)]) +
+    (skipped ? t("importedDup", [String(skipped)]) : "") +
+    (errors.length ? t("importedErrors", [String(errors.length), errors[0].error]) : "");
   res.className = errors.length ? "hint bad" : "hint ok";
   $("importBox").value = "";
   renderProfiles();
@@ -187,7 +189,7 @@ const TEMPLATES = {
 
 function openEditor(profile) {
   editingId = profile ? profile.id : null;
-  $("editorTitle").textContent = profile ? "Изменить профиль" : "Новый профиль";
+  $("editorTitle").textContent = profile ? t("editorTitleEdit") : t("editorTitleNew");
   $("editorType").value = "";
   $("editorJson").value = JSON.stringify(profile || TEMPLATES.vless, null, 2);
   $("editorResult").textContent = "";
@@ -209,6 +211,9 @@ function closeEditor() {
 function parseEditor() {
   const obj = JSON.parse($("editorJson").value);
   if (editingId) obj.id = editingId;
+  // «Новый профиль» обязан быть новым: вставленный JSON существующего профиля
+  // приносит его id, и сохранение молча перезаписывало оригинал.
+  else delete obj.id;
   return obj;
 }
 
@@ -222,7 +227,7 @@ $("exportBtn").addEventListener("click", async () => {
   const res = $("exportResult");
   const profiles = await listProfiles();
   if (!profiles.length) {
-    res.textContent = "Экспортировать нечего — профилей нет.";
+    res.textContent = t("exportEmpty");
     res.className = "hint bad";
     return;
   }
@@ -236,7 +241,7 @@ $("exportBtn").addEventListener("click", async () => {
   a.download = `magicproxy-profiles-${stamp}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  res.textContent = `Сохранено профилей: ${profiles.length}. Файл содержит пароли и ключи — храните его как пароль.`;
+  res.textContent = t("exportDone", [String(profiles.length)]);
   res.className = "hint ok";
 });
 
@@ -250,7 +255,7 @@ $("editorSave").addEventListener("click", async () => {
     closeEditor();
     renderProfiles();
   } catch (e) {
-    res.textContent = `JSON: ${e.message}`;
+    res.textContent = t("jsonError", [e.message]);
     res.className = "hint bad";
   }
 });
@@ -261,18 +266,18 @@ $("editorTest").addEventListener("click", async () => {
   try {
     obj = parseEditor();
   } catch (e) {
-    res.textContent = `JSON: ${e.message}`;
+    res.textContent = t("jsonError", [e.message]);
     res.className = "hint bad";
     return;
   }
-  res.textContent = "Проверяю…";
+  res.textContent = t("checking");
   res.className = "hint";
   const resp = await send("test", { profile: obj });
   if (resp.ok && resp.data?.valid) {
-    res.textContent = "Конфиг валиден ✓";
+    res.textContent = t("configValid");
     res.className = "hint ok";
   } else {
-    res.textContent = `Ошибка: ${resp.error || "невалидный конфиг"}`;
+    res.textContent = t("errPrefix", [resp.error || t("configInvalid")]);
     res.className = "hint bad";
   }
 });
@@ -309,28 +314,30 @@ $("saveRoutingBtn").addEventListener("click", async () => {
   };
   await setRouting(next);
   const res = $("routingResult");
-  res.textContent = "Сохранено ✓ (применится при следующем включении)";
+  // Не «при следующем включении»: PAC-часть подхватывается ближайшим проходом
+  // согласования (≤30 с), правила sing-box — при ближайшем перезапуске ядра.
+  res.textContent = t("routingSaved");
   res.className = "hint ok";
 });
 
 // --- Updates ----------------------------------------------------------------
 $("checkUpdateBtn").addEventListener("click", async () => {
   const res = $("updateResult");
-  res.textContent = "Проверяю…";
+  res.textContent = t("checking");
   res.className = "hint";
   const resp = await send("checkUpdate");
   if (!resp.ok) {
-    res.textContent = `Ошибка: ${resp.error}`;
+    res.textContent = t("errPrefix", [resp.error]);
     res.className = "hint bad";
     return;
   }
   const { current, latest, updateAvailable } = resp.data;
   if (updateAvailable) {
-    res.textContent = `Установлено ${current}, доступно ${latest}`;
+    res.textContent = t("updInstalled", [current, latest]);
     res.className = "hint";
     $("updateCoreBtn").disabled = false;
   } else {
-    res.textContent = `Актуально (${current || "?"})`;
+    res.textContent = t("updCurrent", [current || "?"]);
     res.className = "hint ok";
     $("updateCoreBtn").disabled = true;
   }
@@ -338,15 +345,15 @@ $("checkUpdateBtn").addEventListener("click", async () => {
 
 $("updateCoreBtn").addEventListener("click", async () => {
   const res = $("updateResult");
-  res.textContent = "Скачиваю и обновляю (прокси будет временно выключен)…";
+  res.textContent = t("updRunning");
   res.className = "hint";
   $("updateCoreBtn").disabled = true;
   const resp = await send("updateCore");
   if (resp.ok && resp.data?.updated) {
-    res.textContent = `Обновлено до ${resp.data.version} ✓`;
+    res.textContent = t("updDone", [resp.data.version]);
     res.className = "hint ok";
   } else {
-    res.textContent = `Ошибка: ${resp.error || "не удалось обновить"}`;
+    res.textContent = t("errPrefix", [resp.error || t("updFailed")]);
     res.className = "hint bad";
     $("updateCoreBtn").disabled = false;
   }
@@ -366,5 +373,6 @@ for (const [id, url] of [["privacyLink", PRIVACY_URL], ["securityLink", SECURITY
 }
 
 // --- Init -------------------------------------------------------------------
+localizeDom();
 renderProfiles();
 loadRouting();

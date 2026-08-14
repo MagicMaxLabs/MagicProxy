@@ -25,6 +25,7 @@ import {
   setActiveProfileId,
   getRouting,
 } from "../lib/profiles.js";
+import { t } from "../lib/i18n.js";
 
 // Only logs + lastError are truly volatile; running state lives in storage.
 const state = { logs: [], lastError: null };
@@ -115,18 +116,31 @@ function setBadge(running, error = false) {
   setStatusIcon(state).catch(() => {});
   try {
     chrome.action.setTitle({
-      title: error
-        ? "MagicProxy — ошибка, откройте расширение"
-        : running
-          ? "MagicProxy — включено"
-          : "MagicProxy — выключено",
+      title: error ? t("titleError") : running ? t("titleOn") : t("titleOff"),
     });
   } catch (_) {
     /* action API not ready during early startup */
   }
 }
 
+// Обрыв соединения самим браузером sing-box пишет как ERROR. Для пользователя
+// это не ошибка: вкладку закрыли, страница передумала грузить ресурс. Человек
+// открывает «Логи ядра», видит красное слово ERROR и пугается на ровном месте —
+// а заодно эти строки вытесняют из кольца на 200 записей действительно полезные.
+// На state.lastError они не влияют (проверено 8 августа), поэтому просто не
+// сохраняем их.
+const BENIGN_CORE_LINES =
+  /(connection (upload|download) closed|WSAECONNABORTED|connection reset by peer|broken pipe|use of closed network connection|context canceled)/i;
+
+// Хост говорит по-английски (его сообщения стабильны и попадают в логи), а
+// подсказку про чужой TUN-адаптер пользователь должен прочитать на своём языке —
+// это единственная хостовая строка, написанная ДЛЯ человека, а не для диагноза.
+const TUN_HINT_RE = /^MagicProxy: active TUN adapter detected \(([^)]*)\)/;
+
 function pushLog(line, level = "info") {
+  if (BENIGN_CORE_LINES.test(line)) return;
+  const tun = TUN_HINT_RE.exec(line);
+  if (tun) line = t("tunHint", [tun[1]]) || line;
   state.logs.push({ ts: Date.now(), level, line });
   if (state.logs.length > MAX_LOGS) state.logs.shift();
 }
@@ -143,7 +157,7 @@ function stopKeepalive() {
 async function applyProxyFor(port) {
   const routing = await getRouting();
   const mode = routing.mode === PROXY_MODE.RULES ? PROXY_MODE.RULES : PROXY_MODE.ALL;
-  await proxy.apply({
+  const applied = await proxy.apply({
     mode,
     host: "127.0.0.1",
     port,
@@ -153,6 +167,12 @@ async function applyProxyFor(port) {
     },
     bypass: routing.bypass || [],
   });
+  // Туннель работает, а WebRTC-защиту держит кто-то другой с другой политикой —
+  // редкий конфликт с другим privacy-расширением. Туннель из-за этого не рвём,
+  // но молчать нельзя: реальный IP может быть виден сайтам.
+  if (applied && applied.webrtcGuarded === false) {
+    pushLog(t("warnWebrtcForeign"), "warn");
+  }
 }
 
 // Start the host + sing-box for a profile on the desired (stable) port.
@@ -246,7 +266,7 @@ async function doReconcile(startEpoch = intentEpoch) {
     await proxy.clear();
     stopKeepalive();
     await setDesired({ on: false });
-    state.lastError = "профиль удалён — прокси выключен";
+    state.lastError = t("errProfileDeleted");
     setBadge(false, true);
     await persistRuntime(false, null);
     return { running: false };
@@ -533,10 +553,24 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         case "checkUpdate":
           sendResponse({ ok: true, data: await native.checkUpdate() });
           break;
-        case "updateCore":
-          if ((await getDesired()).on) await disable();
-          sendResponse({ ok: true, data: await native.updateCore() });
+        case "updateCore": {
+          // Текст в настройках обещает «прокси будет временно выключен» — и
+          // раньше это была неправда: disable() выполнялся, а обратного пути не
+          // было. Включаем обратно в finally: и после успеха, и после неудачи
+          // (replaceFile отбрасывает недокачанное, старое ядро остаётся на
+          // месте, так что включаться безопасно в обоих случаях).
+          const wasOn = (await getDesired()).on;
+          if (wasOn) await disable();
+          try {
+            sendResponse({ ok: true, data: await native.updateCore() });
+          } finally {
+            if (wasOn)
+              await enable().catch((e) =>
+                console.warn("[sw] re-enable after core update failed:", e.message)
+              );
+          }
           break;
+        }
         default:
           sendResponse({ ok: false, error: `unknown cmd: ${msg?.cmd}` });
       }

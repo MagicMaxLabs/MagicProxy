@@ -6,7 +6,8 @@
 
 import { DOWNLOAD_MIRRORS, RELEASES_URL } from "../common/constants.js";
 import { parseSubscription, looksLikeSubscriptionUrl } from "../lib/parse.js";
-import { saveProfile, listProfiles, setActiveProfileId } from "../lib/profiles.js";
+import { importProfiles, listProfiles, setActiveProfileId } from "../lib/profiles.js";
+import { t, localizeDom } from "../lib/i18n.js";
 
 const $ = (id) => document.getElementById(id);
 const STATES = ["checking", "ready", "missing", "coreBlocked"];
@@ -80,7 +81,7 @@ function render(result) {
   if (result.state === "ready") {
     stopPolling();
     const d = result.data || {};
-    $("hostInfo").textContent = `Компонент ${d.host || "?"}, ядро ${d.singbox || "?"}`;
+    $("hostInfo").textContent = t("obHostInfo", [d.host || "?", d.singbox || "?"]);
     show("ready");
     return;
   }
@@ -89,7 +90,7 @@ function render(result) {
 }
 
 async function recheck() {
-  $("statusLine").textContent = "Проверяю…";
+  $("statusLine").textContent = t("checking");
   render(await probe());
 }
 
@@ -101,7 +102,7 @@ function renderMirrors() {
   const rest = DOWNLOAD_MIRRORS.slice(1);
   if (rest.length === 0) {
     // Only one source exists today; do not pretend otherwise.
-    $("mirrorsLabel").textContent = "Страница релиза (контрольные суммы, прошлые версии):";
+    $("mirrorsLabel").textContent = t("mirrorsLabelAlt");
     const a = document.createElement("a");
     a.href = RELEASES_URL;
     a.target = "_blank";
@@ -128,7 +129,7 @@ $("quickImportBtn").addEventListener("click", async () => {
   const text = $("quickImport").value.trim();
   const msg = $("quickImportMsg");
   if (!text) {
-    msg.textContent = "Вставь ссылку на сервер.";
+    msg.textContent = t("obEmptyLink");
     msg.className = "hint";
     return;
   }
@@ -141,8 +142,7 @@ $("quickImportBtn").addEventListener("click", async () => {
   // "starts with https" alone would reject genuine HTTPS-proxy links.
   if (looksLikeSubscriptionUrl(text)) {
     const msg = $("quickImportMsg");
-    msg.textContent =
-      "Похоже, это ссылка на подписку, а не на сервер. Открой настройки — там есть импорт подписок.";
+    msg.textContent = t("obSubscriptionLink");
     msg.className = "hint bad";
     return;
   }
@@ -150,17 +150,20 @@ $("quickImportBtn").addEventListener("click", async () => {
   const { profiles, errors } = parseSubscription(text);
   if (!profiles.length) {
     msg.textContent = errors.length
-      ? `Не удалось разобрать ссылку: ${errors[0].error}`
-      : "Не удалось разобрать ссылку.";
+      ? t("obParseFail", [errors[0].error])
+      : t("obParseFailBare");
     msg.className = "hint bad";
     return;
   }
-  for (const p of profiles) await saveProfile(p);
+  const { added, skipped } = await importProfiles(profiles);
   // Without an active profile the popup renders a table with nothing selected and
   // a disabled button, which reads as "nothing happened".
   const all = await listProfiles();
-  if (all.length) await setActiveProfileId(profiles[0].id || all[0].id);
-  msg.textContent = `Добавлено серверов: ${profiles.length}. Открой 🪄 на панели и нажми «Включить».`;
+  if (all.length) await setActiveProfileId(added[0]?.id || all[0].id);
+  msg.textContent =
+    t("obAdded", [String(added.length)]) +
+    (skipped ? t("obAddedDup", [String(skipped)]) : "") +
+    t("obAddedTail");
   msg.className = "hint ok";
   $("quickImport").value = "";
 });
@@ -177,6 +180,8 @@ window.addEventListener("focus", async () => {
   if (currentState && currentState !== "ready") render(await probe());
 });
 
+localizeDom();
+document.title = t("obTitle") || document.title;
 renderMirrors();
 (async () => {
   show("checking");

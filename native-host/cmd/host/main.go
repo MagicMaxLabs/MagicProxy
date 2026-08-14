@@ -33,11 +33,15 @@ func main() {
 
 	// Before anything is spawned: make the operating system responsible for
 	// killing sing-box when this host dies. Stop() only covers the orderly exits.
+	// Строки хоста — по-английски: это диагностика, она попадает в логи и в
+	// отчёты об ошибках. Единственная строка ДЛЯ человека (подсказка про TUN)
+	// имеет стабильный префикс, по которому расширение показывает её на языке
+	// пользователя.
 	if err := core.ConfineChildren(); err != nil {
 		_ = conn.Emit("log", map[string]any{
 			"level": "warn",
-			"line": "MagicProxy: не удалось привязать ядро к процессу хоста (" + err.Error() +
-				"). Если хост завершится аварийно, sing-box может остаться в памяти.",
+			"line": "MagicProxy: could not confine the core to the host process (" + err.Error() +
+				"); if the host dies abnormally, sing-box may stay in memory",
 		})
 	}
 
@@ -63,12 +67,16 @@ func main() {
 		}
 		if adapters := diag.ActiveTunnelAdapters(); len(adapters) > 0 {
 			hintedThisRun = true
+			// Формат зафиксирован: расширение узнаёт эту строку по префиксу
+			// "MagicProxy: active TUN adapter detected (" и подменяет её
+			// переводом (см. TUN_HINT_RE в service-worker.js). Менять текст —
+			// только вместе с тем регулярным выражением.
 			_ = conn.Emit("log", map[string]any{
 				"level": "error",
-				"line": "MagicProxy: обнаружен активный TUN-адаптер (" + strings.Join(adapters, ", ") +
-					"). Другой прокси-клиент перехватывает весь трафик системы, включая наше " +
-					"соединение с твоим сервером — из-за двойного проксирования проверка не проходит. " +
-					"Переключи тот клиент в обычный режим прокси или добавь адрес твоего сервера в его обход.",
+				"line": "MagicProxy: active TUN adapter detected (" + strings.Join(adapters, ", ") +
+					"). Another proxy client is capturing all system traffic, including our " +
+					"connection to your server — double proxying breaks the handshake. Switch " +
+					"that client to plain proxy mode or add your server's address to its bypass list.",
 			})
 		}
 	}
@@ -220,6 +228,17 @@ func handle(conn *messaging.Conn, mgr *core.Manager, req *messaging.Request) {
 			}
 			if url == "" {
 				_ = conn.RespondError(id, errors.New("no downloadable asset found"))
+				return
+			}
+			// Мажор ядра меняет формат конфига. Наш генератор написан и проверен
+			// под 1.x; молча поставить 2.x значит превратить «обновление» в
+			// нерабочий прокси. Такое обновление приезжает только вместе с новой
+			// версией MagicProxy, где генератор ему соответствует.
+			cur := updater.NormalizeVersion(mgr.Version())
+			next := updater.NormalizeVersion(tag)
+			if cur != "" && next != "" && updater.Major(cur) != updater.Major(next) {
+				_ = conn.RespondError(id, errors.New(
+					"core major version change ("+cur+" -> "+next+") ships with a MagicProxy update, not through this button"))
 				return
 			}
 			// Stop sing-box so the binary isn't locked, then replace it.

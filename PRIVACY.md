@@ -1,6 +1,6 @@
 # Privacy Policy — MagicProxy
 
-**Last updated: 7 August 2026**
+**Last updated: 14 August 2026**
 
 ## Short version
 
@@ -34,8 +34,12 @@ No browsing history. No page contents. No URLs. No cookies. No form data. No
 identifiers. No usage statistics. No crash reports.
 
 The extension declares **no host permissions** and injects no scripts into web
-pages. Its permissions are limited to `proxy`, `storage`, `nativeMessaging` and
-`alarms`.
+pages. Its permissions are limited to `proxy`, `privacy`, `storage`,
+`nativeMessaging` and `alarms`. The `privacy` permission is used for exactly one
+thing: while the proxy is on, the profile's WebRTC policy is set to
+`disable_non_proxied_udp` so WebRTC cannot leak your real IP address around the
+tunnel; the policy is removed when the proxy is switched off. No data is read
+through this API.
 
 ## Network connections the software makes by design
 

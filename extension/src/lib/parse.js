@@ -14,6 +14,14 @@ function b64decode(s) {
   }
 }
 
+// «Истинное» значение флага в share-ссылках пишут как минимум двумя способами:
+// allowInsecure=1 и allowInsecure=true. Проверка только на "1" тихо включала
+// строгую проверку сертификата там, где автор ссылки просил обратного, — ссылка
+// импортировалась и не подключалась без единой подсказки почему.
+function flagTrue(v) {
+  return v === "1" || String(v || "").toLowerCase() === "true";
+}
+
 function pickTransport(params) {
   const type = params.get("type") || params.get("net") || "";
   if (!type || type === "tcp" || type === "raw" || type === "none") return undefined;
@@ -36,7 +44,7 @@ function pickTLS(params, defaultSni) {
     enabled: true,
     serverName: params.get("sni") || params.get("peer") || defaultSni || "",
     insecure:
-      params.get("allowInsecure") === "1" || params.get("insecure") === "1",
+      flagTrue(params.get("allowInsecure")) || flagTrue(params.get("insecure")),
   };
   const alpn = params.get("alpn");
   if (alpn) tls.alpn = alpn.split(",").map((s) => s.trim()).filter(Boolean);
@@ -115,17 +123,40 @@ function parseTrojan(url) {
   };
 }
 
+// userinfo Shadowsocks: либо base64("method:password") — классический SIP002,
+// либо (шифры 2022-blake3-*) голый "method:password" с percent-encoding — SIP022.
+// Прежний код всегда декодировал base64, и atob() на SIP022-ссылке падал: все
+// современные серверы отвергались на импорте. Пароль делится по ПЕРВОМУ
+// двоеточию: в имени метода двоеточий не бывает, а в пароле — сколько угодно
+// (split(":") резал такой пароль молча).
+function splitCred(cred) {
+  let dec = null;
+  try {
+    dec = b64decode(cred);
+  } catch {
+    dec = null;
+  }
+  // base64 может «успешно» дать мусор без разделителя — настоящий userinfo
+  // обязан содержать «метод:пароль».
+  if (!dec || !dec.includes(":")) dec = decodeURIComponent(cred);
+  const i = dec.indexOf(":");
+  if (i < 0) throw new Error("shadowsocks: userinfo без «метод:пароль»");
+  return [dec.slice(0, i), dec.slice(i + 1)];
+}
+
 function parseShadowsocks(url) {
   // ss://base64(method:password)@host:port#name
+  // or ss://method:percent-encoded-password@host:port#name   (SIP022)
   // or ss://base64(method:password@host:port)#name
   const hashIdx = url.indexOf("#");
   const name = hashIdx >= 0 ? decodeURIComponent(url.slice(hashIdx + 1)) : "";
   let body = url.slice("ss://".length, hashIdx >= 0 ? hashIdx : undefined);
   let method, password, host, port;
   if (body.includes("@")) {
-    const [cred, hostport] = body.split("@");
-    const dec = b64decode(cred);
-    [method, password] = dec.split(":");
+    const atIdx = body.lastIndexOf("@");
+    const cred = body.slice(0, atIdx);
+    const hostport = body.slice(atIdx + 1);
+    [method, password] = splitCred(cred);
     const lastColon = hostport.lastIndexOf(":");
     host = hostport.slice(0, lastColon);
     port = hostport.slice(lastColon + 1).split("?")[0];
@@ -134,7 +165,7 @@ function parseShadowsocks(url) {
     const atIdx = dec.lastIndexOf("@");
     const cred = dec.slice(0, atIdx);
     const hostport = dec.slice(atIdx + 1);
-    [method, password] = cred.split(":");
+    [method, password] = splitCred(cred);
     const lastColon = hostport.lastIndexOf(":");
     host = hostport.slice(0, lastColon);
     port = hostport.slice(lastColon + 1);
@@ -154,16 +185,21 @@ function parseHysteria2(url) {
   const u = new URL(url.replace(/^hy2:\/\//, "hysteria2://"));
   const p = u.searchParams;
   const obfsType = p.get("obfs");
+  // Пароль Hysteria2 — это ВЕСЬ userinfo. URL-парсер делит его по первому
+  // двоеточию на username:password, и прежний код брал только username —
+  // пароль с двоеточием молча усекался.
+  const user = decodeURIComponent(u.username || "");
+  const pass = decodeURIComponent(u.password || "");
   return {
     type: "hysteria2",
     name: decodeURIComponent(u.hash.slice(1)) || u.hostname,
     server: u.hostname,
     port: Number(u.port) || 443,
-    password: decodeURIComponent(u.username || u.password || ""),
+    password: pass ? `${user}:${pass}` : user,
     tls: {
       enabled: true,
       serverName: p.get("sni") || u.hostname,
-      insecure: p.get("insecure") === "1",
+      insecure: flagTrue(p.get("insecure")),
     },
     hysteria2: obfsType
       ? { obfs: { type: obfsType, password: p.get("obfs-password") || "" } }
@@ -184,7 +220,7 @@ function parseTuic(url) {
     tls: {
       enabled: true,
       serverName: p.get("sni") || u.hostname,
-      insecure: p.get("allow_insecure") === "1",
+      insecure: flagTrue(p.get("allow_insecure")),
       alpn: (p.get("alpn") || "h3").split(",").map((s) => s.trim()),
     },
     tuic: {
@@ -210,7 +246,7 @@ function parseProxyUri(url, type) {
       ? {
           enabled: true,
           serverName: p.get("sni") || u.hostname,
-          insecure: p.get("insecure") === "1" || p.get("allowInsecure") === "1",
+          insecure: flagTrue(p.get("insecure")) || flagTrue(p.get("allowInsecure")),
         }
       : { enabled: false },
   };
@@ -228,7 +264,7 @@ function parseAnytls(url) {
     tls: {
       enabled: true,
       serverName: p.get("sni") || u.hostname,
-      insecure: p.get("insecure") === "1" || p.get("allowInsecure") === "1",
+      insecure: flagTrue(p.get("insecure")) || flagTrue(p.get("allowInsecure")),
     },
   };
 }
@@ -244,13 +280,17 @@ function parseHysteria1(url) {
     tls: {
       enabled: true,
       serverName: p.get("peer") || p.get("sni") || u.hostname,
-      insecure: p.get("insecure") === "1",
+      insecure: flagTrue(p.get("insecure")),
     },
     hysteria1: {
       authStr: p.get("auth") || p.get("auth_str") || "",
       upMbps: Number(p.get("upmbps") || p.get("up")) || 0,
       downMbps: Number(p.get("downmbps") || p.get("down")) || 0,
-      obfs: p.get("obfs") || "",
+      // Секрет обфускации лежит в obfsParam=; obfs= — это НАЗВАНИЕ метода
+      // (обычно xplus). Прежний код отправлял название вместо секрета, и
+      // соединение молча зависало. Часть панелей кладёт секрет прямо в obfs= —
+      // поэтому он остаётся запасным значением.
+      obfs: p.get("obfsParam") || p.get("obfs-password") || p.get("obfs") || "",
     },
   };
 }

@@ -448,12 +448,12 @@ func buildProxy(p *Profile) (outbounds []obj, endpoints []obj, err error) {
 		// Fail-closed, как и всё остальное: SSH без проверки ключа хоста — это
 		// туннель, который отдаёт пароль первому же перехватчику на пути. Запуск
 		// без ключа запрещён, а не «разрешён с предупреждением»: предупреждений
-		// в логах никто не читает.
+		// в логах никто не читает. Текст стабилен — попап узнаёт его по префиксу
+		// "ssh: hostKey is not set" и показывает перевод (humanError).
 		if p.HostKey == "" {
 			return nil, nil, fmt.Errorf(
-				"ssh: не задан hostKey (ключ сервера). Получите его командой " +
-					"«ssh-keyscan -t ed25519 <сервер>» и вставьте строку вида " +
-					"«ssh-ed25519 AAAA…» в поле hostKey профиля")
+				"ssh: hostKey is not set. Run \"ssh-keyscan -t ed25519 <server>\" " +
+					"and paste the \"ssh-ed25519 AAAA…\" line into the profile's hostKey field")
 		}
 		out["host_key"] = []string{p.HostKey}
 		tls = nil

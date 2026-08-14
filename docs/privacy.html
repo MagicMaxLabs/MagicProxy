@@ -50,7 +50,7 @@
 <body>
 
 <h1>Privacy Policy — MagicProxy</h1>
-<p class="updated">Last updated: 7 August 2026</p>
+<p class="updated">Last updated: 14 August 2026</p>
 
 <h2>Short version</h2>
 <p>
@@ -93,7 +93,12 @@
 <p>
   The extension declares <strong>no host permissions</strong> and injects no
   scripts into web pages. Its permissions are limited to <code>proxy</code>,
-  <code>storage</code>, <code>nativeMessaging</code> and <code>alarms</code>.
+  <code>privacy</code>, <code>storage</code>, <code>nativeMessaging</code> and
+  <code>alarms</code>. The <code>privacy</code> permission is used for exactly
+  one thing: while the proxy is on, the profile's WebRTC policy is set to
+  <code>disable_non_proxied_udp</code> so WebRTC cannot leak your real IP address
+  around the tunnel; the policy is removed when the proxy is switched off. No
+  data is read through this API.
 </p>
 
 <h2>Network connections the software makes by design</h2>

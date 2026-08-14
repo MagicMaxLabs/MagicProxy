@@ -77,6 +77,14 @@ func NormalizeVersion(s string) string {
 	return m
 }
 
+// Major returns the major component of a normalized version ("1.13.14" -> "1").
+func Major(v string) string {
+	if i := strings.IndexByte(v, '.'); i > 0 {
+		return v[:i]
+	}
+	return v
+}
+
 // InstallSingBox downloads the archive at url and writes sing-box.exe to destExe
 // (atomically via a temp file + rename). The caller must ensure no sing-box
 // process is currently using destExe.

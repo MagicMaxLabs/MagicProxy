@@ -13,22 +13,22 @@
       <!-- 1. Проверка -->
       <div id="checking" class="state">
         <div class="spinner"></div>
-        <p>Проверяю фоновый компонент…</p>
+        <p data-i18n="obChecking">Проверяю фоновый компонент…</p>
       </div>
 
       <!-- 2. Всё готово — это же и есть экран первого запуска -->
       <div id="ready" class="state hidden">
         <div class="badge badge--ok">✓</div>
-        <h2>Всё установлено</h2>
+        <h2 data-i18n="obReadyTitle">Всё установлено</h2>
         <p class="muted" id="hostInfo"></p>
 
         <ol class="steps">
-          <li>
+          <li data-i18n-html="obStep1">
             <b>Закрепи иконку 🪄 на панели.</b> Нажми на пазл
             <span class="key">🧩</span> справа от адресной строки и щёлкни булавку
             рядом с MagicProxy. Иначе индикатор вкл/выкл будет не виден.
           </li>
-          <li>
+          <li data-i18n-html="obStep2">
             <b>Добавь свой сервер.</b> Вставь ссылку — поддерживаются
             <code>vless://</code>, <code>vmess://</code>, <code>trojan://</code>,
             <code>ss://</code>, <code>hysteria2://</code>, <code>tuic://</code>,
@@ -39,14 +39,14 @@
 
         <textarea id="quickImport" rows="3" placeholder="vless://…"></textarea>
         <div class="actions">
-          <button id="quickImportBtn">Добавить сервер</button>
-          <button id="openOptions" class="btn--secondary">Открыть настройки</button>
+          <button id="quickImportBtn" data-i18n="quickImportBtn">Добавить сервер</button>
+          <button id="openOptions" class="btn--secondary" data-i18n="openOptions">Открыть настройки</button>
         </div>
         <p id="quickImportMsg" class="hint"></p>
 
         <details>
-          <summary>У меня ещё нет ссылки</summary>
-          <p class="hint">
+          <summary data-i18n="obNoLinkSummary">У меня ещё нет ссылки</summary>
+          <p class="hint" data-i18n-html="obNoLinkBody">
             MagicProxy не даёт серверов — он подключается к <b>твоему</b>. Ссылку
             обычно берут одним из двух способов: поднимают сервер на своём VPS
             (у Xray и sing-box есть скрипты установки в одну команду) либо получают
@@ -59,53 +59,53 @@
       <!-- 3. Хост не установлен -->
       <div id="missing" class="state hidden">
         <div class="badge badge--warn">!</div>
-        <h2>Остался один шаг</h2>
-        <p>
+        <h2 data-i18n="obMissingTitle">Остался один шаг</h2>
+        <p data-i18n="obMissingBody1">
           Расширение из песочницы браузера не может само передавать трафик по
           VLESS — этим занимается небольшой фоновый компонент. Его нужно
           установить один раз.
         </p>
-        <p class="muted">
+        <p class="muted" data-i18n="obMissingBody2">
           Внутри установщика уже всё есть: и сам компонент, и сетевое ядро.
           Интернет для установки не нужен, ничего доскачивать не придётся.
         </p>
 
         <div class="actions">
-          <a id="downloadBtn" class="btn" href="#" target="_blank" rel="noopener">Скачать установщик</a>
-          <button id="recheckMissing" class="btn--secondary">Проверить снова</button>
+          <a id="downloadBtn" class="btn" href="#" target="_blank" rel="noopener" data-i18n="downloadBtn">Скачать установщик</a>
+          <button id="recheckMissing" class="btn--secondary" data-i18n="recheckBtn">Проверить снова</button>
         </div>
-        <p class="hint" id="mirrorsLabel">Если ссылка не открывается, попробуй зеркало:</p>
+        <p class="hint" id="mirrorsLabel" data-i18n="mirrorsLabel">Если ссылка не открывается, попробуй зеркало:</p>
         <p class="hint" id="mirrors"></p>
 
-        <p class="hint">
+        <p class="hint" data-i18n-html="obSmartScreen">
           Windows покажет синее окно «Windows защитила ваш компьютер» — это
           обычное предупреждение для программ без платной подписи. Нажми
           <b>«Подробнее» → «Выполнить в любом случае»</b>. Контрольную сумму файла
           можно сверить на странице релиза.
         </p>
-        <p class="hint">Запусти установщик — эта страница сама всё заметит.</p>
+        <p class="hint" data-i18n="obAutoNotice">Запусти установщик — эта страница сама всё заметит.</p>
 
         <details>
-          <summary>Ставлю из исходников</summary>
-          <p class="hint">Запусти <code>setup.bat</code> в корне проекта.</p>
+          <summary data-i18n="obFromSourceSummary">Ставлю из исходников</summary>
+          <p class="hint" data-i18n-html="obFromSourceBody">Запусти <code>setup.bat</code> в корне проекта.</p>
         </details>
       </div>
 
       <!-- 4. Хост есть, но ядро недоступно (антивирус/повреждённая установка) -->
       <div id="coreBlocked" class="state hidden">
         <div class="badge badge--warn">!</div>
-        <h2>Фоновый компонент есть, но сетевое ядро не запускается</h2>
-        <p>
+        <h2 data-i18n="obCoreTitle">Фоновый компонент есть, но сетевое ядро не запускается</h2>
+        <p data-i18n-html="obCoreBody1">
           Чаще всего это антивирус: прокси-утилиты попадают под эвристики и
           <code>sing-box.exe</code> отправляется в карантин. Файл при этом
           установлен, докачивать ничего не нужно.
         </p>
-        <p class="muted">
+        <p class="muted" data-i18n="obCoreBody2">
           Проверь карантин антивируса и добавь папку MagicProxy в исключения,
           затем нажми «Проверить снова». Если не помогло — переустанови.
         </p>
         <div class="actions">
-          <button id="recheckCore">Проверить снова</button>
+          <button id="recheckCore" data-i18n="recheckBtn">Проверить снова</button>
         </div>
       </div>
 
