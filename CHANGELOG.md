@@ -5,6 +5,47 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-08-14
+
+### Added
+- English interface. The extension now ships in English and Russian
+  (`_locales`, `chrome.i18n`); the browser's UI language picks the locale.
+- WebRTC leak protection: while the proxy is on, the profile's WebRTC policy is
+  set to `disable_non_proxied_udp` (new `privacy` permission), so pages cannot
+  learn your real IP from ICE candidates. Removed when the proxy is off.
+- Profile export to JSON, and a confirmation before deleting a profile.
+- SSH profiles verify the server's host key (`hostKey` is now required) and
+  refuse to start without it.
+- Import deduplication: re-importing a subscription no longer duplicates
+  profiles.
+
+### Changed
+- Rules mode (PAC) is fail-closed: a PAC failure now blocks traffic instead of
+  silently falling back to a direct connection.
+- `*.example.com` in routing rules now also matches `example.com`.
+- Bundled sing-box core: v1.13.14 → v1.13.16; its download is verified against
+  a pinned SHA-256 in CI and setup.ps1.
+- "Update core" switches the proxy back on afterwards, and refuses a
+  major-version jump of the core (that ships with a MagicProxy release).
+- Harmless core log lines about client-closed connections are no longer shown
+  as errors.
+- After installation the setup wizard opens the Chrome Web Store listing.
+- Minimum Chrome version: 116 → 120 (the 30-second self-heal alarm needs 120).
+
+### Fixed
+- Modern `ss://` links (SIP022 / 2022-blake3 ciphers) import correctly;
+  passwords containing colons survive in `ss://` and `hysteria2://` links;
+  `allowInsecure=true` is honored; Hysteria v1 sends the obfuscation secret
+  from `obfsParam=` instead of the method name.
+- Pasting an existing profile's JSON into "New profile" no longer overwrites
+  the original.
+- The generated core configuration (which contains server credentials) is
+  deleted when the proxy stops and when the host exits, and both uninstallers
+  remove any leftovers; each host process now uses its own working directory.
+- Checking for core updates can no longer freeze the background component on
+  networks where GitHub stalls.
+- A deliberate core stop no longer flashes the toolbar dot red.
+
 ## [0.1.0] - 2026-08-08
 
 First public release.

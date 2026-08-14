@@ -8,7 +8,7 @@ all of the actual network work.
 |---|---|
 | **Project** | sing-box by SagerNet |
 | **Upstream** | https://github.com/SagerNet/sing-box |
-| **Bundled version** | **v1.13.14** |
+| **Bundled version** | **v1.13.16** |
 | **Licence** | GPL-3.0-or-later, plus an additional naming clause (see `LICENSE`) |
 | **Copyright** | Copyright (C) 2022 by nekohasekai &lt;contact-sagernet@sekai.icu&gt; |
 
@@ -20,9 +20,9 @@ GPLv3 §6 requires that the corresponding source code be made available to you.
 
 **The complete corresponding source for the exact version bundled here is available at:**
 
-> https://github.com/SagerNet/sing-box/tree/v1.13.14
+> https://github.com/SagerNet/sing-box/tree/v1.13.16
 >
-> Source archive: https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.14.tar.gz
+> Source archive: https://github.com/SagerNet/sing-box/archive/refs/tags/v1.13.16.tar.gz
 
 Every MagicProxy release links to the source archive for the exact sing-box version that
 release contains, from the same release page, at no charge.
