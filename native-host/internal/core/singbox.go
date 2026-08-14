@@ -22,10 +22,16 @@ type Manager struct {
 	cmd       *exec.Cmd
 	port      int
 	startedAt time.Time
+	// Процессы, остановленные нами намеренно (Stop, рестарт под новый конфиг).
+	// Их завершение — не событие: расширению уже ответил сам запрос, а событие
+	// state{running:false, error:"exit status 1"} заставляло бейдж мигать красным
+	// на каждой смене профиля.
+	expectKill map[*exec.Cmd]bool
 
 	// OnLog is called for each stdout/stderr line from sing-box.
 	OnLog func(level, line string)
-	// OnExit is called when the process exits (nil err = clean).
+	// OnExit is called when the process exits UNEXPECTEDLY (nil err = clean).
+	// Deliberate stops via Stop() do not fire it.
 	OnExit func(err error)
 }
 
@@ -54,11 +60,51 @@ func NewManager() (*Manager, error) {
 		return nil, fmt.Errorf("sing-box binary not found near %s", dir)
 	}
 
-	workDir := filepath.Join(os.TempDir(), "magicproxy")
+	// Свой каталог на процесс. Общий %TEMP%\magicproxy\config.json давал гонку:
+	// хосты двух профилей браузера затирали конфиги друг друга. Заодно каждый
+	// хост убирает за собой ровно свой каталог (см. Cleanup) — конфиг с паролями
+	// не должен переживать процесс, который его написал.
+	parent := filepath.Join(os.TempDir(), "magicproxy")
+	workDir := filepath.Join(parent, fmt.Sprintf("host-%d", os.Getpid()))
 	if err := os.MkdirAll(workDir, 0o700); err != nil {
 		return nil, err
 	}
-	return &Manager{binPath: bin, workDir: workDir}, nil
+	sweepStale(parent, filepath.Base(workDir))
+	return &Manager{binPath: bin, workDir: workDir, expectKill: map[*exec.Cmd]bool{}}, nil
+}
+
+// sweepStale удаляет из родительского каталога чужие записи старше часа: осиротевшие
+// каталоги упавших хостов и config.json старой (общей) раскладки. Порог по времени —
+// защита от гонки с живым хостом соседнего профиля браузера, который мог только что
+// записать конфиг и ещё не запустить ядро. Час спустя конфиг либо давно прочитан,
+// либо его хост мёртв.
+func sweepStale(parent, keep string) {
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		return
+	}
+	cutoff := time.Now().Add(-1 * time.Hour)
+	for _, e := range entries {
+		if e.Name() == keep {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil || info.ModTime().After(cutoff) {
+			continue
+		}
+		_ = os.RemoveAll(filepath.Join(parent, e.Name()))
+	}
+}
+
+// Cleanup удаляет рабочий каталог хоста вместе с конфигом. Вызывается при выходе;
+// пока ядро живо, вызывать нельзя (Stop его уже убил — см. main).
+func (m *Manager) Cleanup() {
+	m.mu.Lock()
+	dir := m.workDir
+	m.mu.Unlock()
+	if dir != "" {
+		_ = os.RemoveAll(dir)
+	}
 }
 
 func singBoxName() string {
@@ -120,6 +166,13 @@ func (m *Manager) Version() string {
 
 // Check validates a config without running it (sing-box check).
 func (m *Manager) Check(cfg []byte) error {
+	// Каталог может исчезнуть под ногами: sweepStale чужого хоста считает нас
+	// устаревшими после часа тишины (mtime каталога — это время последнего
+	// Start). Пересоздание перед записью самовосстанавливает и этот случай, и
+	// любую другую внешнюю чистку %TEMP%.
+	if err := os.MkdirAll(m.workDir, 0o700); err != nil {
+		return err
+	}
 	path := filepath.Join(m.workDir, "check.json")
 	if err := os.WriteFile(path, cfg, 0o600); err != nil {
 		return err
@@ -160,6 +213,10 @@ func (m *Manager) Start(cfg []byte, port int) error {
 		m.stopLocked()
 	}
 
+	// См. комментарий в Check: каталог обязан уметь пересоздаваться.
+	if err := os.MkdirAll(m.workDir, 0o700); err != nil {
+		return err
+	}
 	path := filepath.Join(m.workDir, "config.json")
 	if err := os.WriteFile(path, cfg, 0o600); err != nil {
 		return err
@@ -193,12 +250,16 @@ func (m *Manager) Start(cfg []byte, port int) error {
 	go func() {
 		waitErr := started.Wait()
 		m.mu.Lock()
+		deliberate := m.expectKill[started]
+		delete(m.expectKill, started)
 		if m.cmd == started {
 			m.cmd = nil
 			m.port = 0
 		}
 		m.mu.Unlock()
-		if m.OnExit != nil {
+		// Намеренная остановка — не событие: о ней уже отчитался сам запрос
+		// (stop/рестарт). Событие нужно только для неожиданной смерти ядра.
+		if m.OnExit != nil && !deliberate {
 			m.OnExit(waitErr)
 		}
 	}()
@@ -248,8 +309,13 @@ func (m *Manager) stopLocked() error {
 		return nil
 	}
 	proc := m.cmd.Process
+	m.expectKill[m.cmd] = true
 	m.cmd = nil
 	m.port = 0
+	// Конфиг с паролями нужен ядру только в момент старта (читается один раз);
+	// после остановки держать его на диске незачем. Ошибка удаления не важнее
+	// самой остановки — best effort.
+	_ = os.Remove(filepath.Join(m.workDir, "config.json"))
 	// Kill is reliable cross-platform; sing-box has no cleanup that needs SIGTERM.
 	if err := proc.Kill(); err != nil {
 		return err

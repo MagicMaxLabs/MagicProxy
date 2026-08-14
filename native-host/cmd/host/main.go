@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync/atomic"
 
 	"magicproxy/internal/config"
 	"magicproxy/internal/core"
@@ -91,7 +92,14 @@ func main() {
 	}
 
 	_ = mgr.Stop()
+	// Конфиг с паролями не должен переживать процесс, который его написал.
+	mgr.Cleanup()
 }
+
+// updateBusy предотвращает два одновременных updateCore: команды выполняются в
+// горутинах (см. handle), и без замка второй клик по кнопке гонялся бы с первым
+// за один и тот же .exe.
+var updateBusy atomic.Bool
 
 func handle(conn *messaging.Conn, mgr *core.Manager, req *messaging.Request) {
 	switch req.Type {
@@ -176,41 +184,55 @@ func handle(conn *messaging.Conn, mgr *core.Manager, req *messaging.Request) {
 		}
 		_ = conn.Respond(req.ID, map[string]any{"stopped": true})
 
+	// Обе команды обновления ходят в сеть и выполняются в горутине: handle()
+	// вызывается из единственного цикла чтения, и синхронный сетевой запрос
+	// (даже с таймаутом — это десятки секунд) молчал бы на ping/status/stop,
+	// то есть ломал всю механику живучести. Запись в Conn под мьютексом,
+	// параллельные ответы безопасны.
 	case "checkUpdate":
-		current := updater.NormalizeVersion(mgr.Version())
-		tag, url, err := updater.LatestSingBox()
-		if err != nil {
-			_ = conn.RespondError(req.ID, err)
-			return
-		}
-		latest := updater.NormalizeVersion(tag)
-		_ = conn.Respond(req.ID, map[string]any{
-			"current":         current,
-			"latest":          latest,
-			"updateAvailable": current != "" && latest != "" && current != latest,
-			"downloadUrl":     url,
-		})
+		go func(id string) {
+			current := updater.NormalizeVersion(mgr.Version())
+			tag, url, err := updater.LatestSingBox()
+			if err != nil {
+				_ = conn.RespondError(id, err)
+				return
+			}
+			latest := updater.NormalizeVersion(tag)
+			_ = conn.Respond(id, map[string]any{
+				"current":         current,
+				"latest":          latest,
+				"updateAvailable": current != "" && latest != "" && current != latest,
+				"downloadUrl":     url,
+			})
+		}(req.ID)
 
 	case "updateCore":
-		tag, url, err := updater.LatestSingBox()
-		if err != nil {
-			_ = conn.RespondError(req.ID, err)
+		if !updateBusy.CompareAndSwap(false, true) {
+			_ = conn.RespondError(req.ID, errors.New("обновление уже выполняется"))
 			return
 		}
-		if url == "" {
-			_ = conn.RespondError(req.ID, errors.New("no downloadable asset found"))
-			return
-		}
-		// Stop sing-box so the binary isn't locked, then replace it.
-		_ = mgr.Stop()
-		if err := updater.InstallSingBox(url, mgr.SingBoxPath()); err != nil {
-			_ = conn.RespondError(req.ID, err)
-			return
-		}
-		_ = conn.Respond(req.ID, map[string]any{
-			"updated": true,
-			"version": updater.NormalizeVersion(tag),
-		})
+		go func(id string) {
+			defer updateBusy.Store(false)
+			tag, url, err := updater.LatestSingBox()
+			if err != nil {
+				_ = conn.RespondError(id, err)
+				return
+			}
+			if url == "" {
+				_ = conn.RespondError(id, errors.New("no downloadable asset found"))
+				return
+			}
+			// Stop sing-box so the binary isn't locked, then replace it.
+			_ = mgr.Stop()
+			if err := updater.InstallSingBox(url, mgr.SingBoxPath()); err != nil {
+				_ = conn.RespondError(id, err)
+				return
+			}
+			_ = conn.Respond(id, map[string]any{
+				"updated": true,
+				"version": updater.NormalizeVersion(tag),
+			})
+		}(req.ID)
 
 	default:
 		_ = conn.RespondError(req.ID, errors.New("unknown request type: "+req.Type))

@@ -96,28 +96,32 @@ type WireGuardOpts struct {
 }
 
 type Profile struct {
-	ID        string         `json:"id"`
-	Name      string         `json:"name"`
-	Type      string         `json:"type"`
-	Server    string         `json:"server"`
-	Port      int            `json:"port"`
-	UUID      string         `json:"uuid"`
-	Password  string         `json:"password"`
-	Username  string         `json:"username"`
-	Method    string         `json:"method"`
-	AlterID   int            `json:"alterId"`
-	Flow      string         `json:"flow"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Server   string `json:"server"`
+	Port     int    `json:"port"`
+	UUID     string `json:"uuid"`
+	Password string `json:"password"`
+	Username string `json:"username"`
+	Method   string `json:"method"`
+	AlterID  int    `json:"alterId"`
+	Flow     string `json:"flow"`
 	// socks: "5" (default), "4", "4a". http: ignored.
 	SocksVersion string `json:"socksVersion"`
 	// ssh: PEM private key (alternative to password auth).
-	PrivateKey string         `json:"privateKey"`
-	TLS        *TLS           `json:"tls"`
-	Transport  *Transport     `json:"transport"`
-	Hysteria2  *Hysteria2Opts `json:"hysteria2"`
-	Hysteria1  *Hysteria1Opts `json:"hysteria1"`
-	Tuic       *TuicOpts      `json:"tuic"`
-	WireGuard  *WireGuardOpts `json:"wireguard"`
-	ShadowTLS  *ShadowTLSOpts `json:"shadowtls"`
+	PrivateKey string `json:"privateKey"`
+	// ssh: expected server host key ("ssh-ed25519 AAAA…", as printed by
+	// ssh-keyscan). Without it sing-box would accept ANY server that answers on
+	// the port, and an active man-in-the-middle collects the password.
+	HostKey   string         `json:"hostKey"`
+	TLS       *TLS           `json:"tls"`
+	Transport *Transport     `json:"transport"`
+	Hysteria2 *Hysteria2Opts `json:"hysteria2"`
+	Hysteria1 *Hysteria1Opts `json:"hysteria1"`
+	Tuic      *TuicOpts      `json:"tuic"`
+	WireGuard *WireGuardOpts `json:"wireguard"`
+	ShadowTLS *ShadowTLSOpts `json:"shadowtls"`
 }
 
 type Inbound struct {
@@ -441,6 +445,17 @@ func buildProxy(p *Profile) (outbounds []obj, endpoints []obj, err error) {
 		if p.PrivateKey != "" {
 			out["private_key"] = p.PrivateKey
 		}
+		// Fail-closed, как и всё остальное: SSH без проверки ключа хоста — это
+		// туннель, который отдаёт пароль первому же перехватчику на пути. Запуск
+		// без ключа запрещён, а не «разрешён с предупреждением»: предупреждений
+		// в логах никто не читает.
+		if p.HostKey == "" {
+			return nil, nil, fmt.Errorf(
+				"ssh: не задан hostKey (ключ сервера). Получите его командой " +
+					"«ssh-keyscan -t ed25519 <сервер>» и вставьте строку вида " +
+					"«ssh-ed25519 AAAA…» в поле hostKey профиля")
+		}
+		out["host_key"] = []string{p.HostKey}
 		tls = nil
 		tr = nil
 	case "socks":

@@ -54,14 +54,21 @@ async function renderProfiles() {
     tdServer.textContent = `${p.server}:${p.port}`;
 
     const tdActions = document.createElement("td");
-    const edit = document.createElement("span");
+    // Настоящие кнопки, а не <span>: фокус и Enter/Space достаются бесплатно.
+    const edit = document.createElement("button");
+    edit.type = "button";
     edit.className = "link";
     edit.textContent = "изменить";
     edit.addEventListener("click", () => openEditor(p));
-    const del = document.createElement("span");
+    const del = document.createElement("button");
+    del.type = "button";
     del.className = "link danger";
     del.textContent = "удалить";
     del.addEventListener("click", async () => {
+      // Подтверждение обязательно: профиль — это выданные однажды UUID и ключи,
+      // копии которых у пользователя может больше не быть.
+      const label = p.name ? `«${p.name}»` : `${p.server}:${p.port}`;
+      if (!confirm(`Удалить профиль ${label}? Данные для подключения будут потеряны.`)) return;
       await deleteProfile(p.id);
       renderProfiles();
     });
@@ -163,6 +170,9 @@ const TEMPLATES = {
   ssh: {
     name: "SSH", type: "ssh", server: "example.com", port: 22,
     username: "root", password: "", privateKey: "",
+    // Ключ хоста обязателен: без него любой сервер на пути может выдать себя за
+    // ваш и забрать пароль. Получить: ssh-keyscan -t ed25519 example.com
+    hostKey: "",
   },
   socks: {
     name: "SOCKS", type: "socks", server: "example.com", port: 1080,
@@ -203,6 +213,33 @@ function parseEditor() {
 }
 
 $("addBtn").addEventListener("click", () => openEditor(null));
+
+// Экспорт — страховка от «удалил, а копии нигде нет»: UUID и ключи выдаются в
+// панели провайдера один раз, восстановить их после потери часто нечем.
+// Формат — JSON-массив профилей; любой элемент можно вставить обратно через
+// «Новый профиль (JSON)» как есть.
+$("exportBtn").addEventListener("click", async () => {
+  const res = $("exportResult");
+  const profiles = await listProfiles();
+  if (!profiles.length) {
+    res.textContent = "Экспортировать нечего — профилей нет.";
+    res.className = "hint bad";
+    return;
+  }
+  const blob = new Blob([JSON.stringify(profiles, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.download = `magicproxy-profiles-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  res.textContent = `Сохранено профилей: ${profiles.length}. Файл содержит пароли и ключи — храните его как пароль.`;
+  res.className = "hint ok";
+});
+
 $("editorCancel").addEventListener("click", closeEditor);
 
 $("editorSave").addEventListener("click", async () => {

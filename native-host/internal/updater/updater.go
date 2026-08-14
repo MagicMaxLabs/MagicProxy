@@ -16,6 +16,17 @@ import (
 
 const singboxReleaseAPI = "https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 
+// У http.DefaultClient нет таймаута вообще: на сети, где GitHub придушен (а это
+// профильная ситуация для наших пользователей), запрос повисал навсегда — и
+// вместе с ним весь хост, потому что handle() обслуживает команды из одного
+// цикла. Два клиента, потому что бюджеты разные: ответ API — секунды, скачивание
+// архива ~30 МБ на медленном канале — минуты. Timeout покрывает весь обмен,
+// включая чтение тела.
+var (
+	apiClient      = &http.Client{Timeout: 30 * time.Second}
+	downloadClient = &http.Client{Timeout: 10 * time.Minute}
+)
+
 type asset struct {
 	Name string `json:"name"`
 	URL  string `json:"browser_download_url"`
@@ -26,19 +37,19 @@ type release struct {
 	Assets  []asset `json:"assets"`
 }
 
-func httpGet(url string) (*http.Response, error) {
+func httpGet(client *http.Client, url string) (*http.Response, error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "MagicProxy-Updater")
-	return http.DefaultClient.Do(req)
+	return client.Do(req)
 }
 
 // LatestSingBox returns the latest release tag (e.g. "v1.13.14") and the
 // windows-amd64 archive download URL.
 func LatestSingBox() (tag, url string, err error) {
-	resp, err := httpGet(singboxReleaseAPI)
+	resp, err := httpGet(apiClient, singboxReleaseAPI)
 	if err != nil {
 		return "", "", err
 	}
@@ -70,7 +81,7 @@ func NormalizeVersion(s string) string {
 // (atomically via a temp file + rename). The caller must ensure no sing-box
 // process is currently using destExe.
 func InstallSingBox(url, destExe string) error {
-	resp, err := httpGet(url)
+	resp, err := httpGet(downloadClient, url)
 	if err != nil {
 		return err
 	}

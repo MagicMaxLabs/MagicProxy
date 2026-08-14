@@ -89,6 +89,18 @@ ru.FinishedLabelText=Установка завершена. Остался од�
 en.FinishedLabel=Setup is done. One step remains: add the MagicProxy extension to your browser.
 ru.FinishedLabel=Установка завершена. Остался один шаг: добавить расширение MagicProxy в браузер.
 
+[Code]
+{ The host writes the generated core config (server address, passwords, keys in
+  plain text) under %TEMP%\magicproxy. The host cleans up after itself on every
+  normal exit, but a crashed host leaves the file behind — and PRIVACY.md
+  promises that uninstalling removes the temporary configuration, so the
+  uninstaller has to keep that promise no matter how the host died. }
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usPostUninstall then
+    DelTree(GetEnv('TEMP') + '\magicproxy', True, True, True);
+end;
+
 [UninstallDelete]
 ; The generated sing-box config holds the server address and credentials in clear
 ; text, and it lives in %TEMP%\magicproxy — NOT next to the exe, which is what the

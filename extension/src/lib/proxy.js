@@ -58,7 +58,11 @@ function FindProxyForURL(url, host) {
 }`.trim();
   return {
     mode: "pac_script",
-    pacScript: { data: script },
+    // mandatory: true — режим правил обязан быть fail-closed, как и всё
+    // остальное. Без этого флага любой сбой PAC-скрипта молча роняет ВЕСЬ трафик
+    // в DIRECT: профиль ходит напрямую, а точка горит зелёным. С флагом сбой
+    // рвёт соединения — заметно и честно.
+    pacScript: { data: script, mandatory: true },
   };
 }
 

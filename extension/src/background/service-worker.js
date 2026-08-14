@@ -632,7 +632,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 // Every time the worker spins up: reflect state and self-heal if needed.
 (async () => {
   const desired = await getDesired();
-  setBadge(desired.on);
+  // Бейдж — из ФАКТА (runtime), не из намерения: зелёный обязан исходить только
+  // из подтверждённого успеха. Раньше здесь стояло setBadge(desired.on), и
+  // воркер, проснувшийся при сломанном туннеле, на время прохода согласования
+  // рисовал зелёное поверх нерабочего прокси.
+  const rt = await getRuntime();
+  setBadge(desired.on && !!rt.running);
   // Если воркер убили посреди disable(), настройка могла остаться применённой при
   // выключённом намерении. Снимаем сразу, не дожидаясь прохода согласования.
   if (!desired.on) await proxy.clearIfOurs();

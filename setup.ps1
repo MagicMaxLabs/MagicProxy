@@ -3,8 +3,9 @@
   One-click setup for MagicProxy. No arguments needed.
 
 .DESCRIPTION
-  Because the extension ships a fixed "key" in its manifest, its ID is constant
-  ("enhdbompcjbofadainhfppkhahlhbmap"), so this script needs no user input:
+  Because the extension ships the Chrome Web Store's public key in its manifest,
+  its ID is constant ("gpkpglcfdlodjbabgjackonmfpemaomg") for both the store build
+  and a build from source, so this script needs no user input:
 
     1. Ensures binaries exist (builds the host if Go is present; downloads
        sing-box automatically if missing).
@@ -55,6 +56,11 @@ if ($Uninstall) {
     if (Test-Path $key) { Remove-Item $key -Force; Write-Host "  removed $name" }
   }
   if (Test-Path $Manifest) { Remove-Item $Manifest -Force }
+  # Сгенерированный конфиг ядра содержит адрес сервера и пароли открытым текстом.
+  # Хост убирает его сам при каждом штатном выходе, но после аварийного завершения
+  # файл остаётся — а PRIVACY.md обещает, что деинсталляция его удаляет.
+  $tmpDir = Join-Path $env:TEMP "magicproxy"
+  if (Test-Path $tmpDir) { Remove-Item -Recurse -Force $tmpDir; Write-Host "  removed temp configs" }
   Write-Host "MagicProxy unregistered." -ForegroundColor Green
   return
 }
@@ -72,7 +78,8 @@ if (-not (Test-Path $HostExe)) {
   if ($go) {
     Write-Host "  building with Go..."
     Push-Location (Join-Path $Root "native-host")
-    try { & $go.Source build -o $HostExe ./cmd/host } finally { Pop-Location }
+    # -trimpath — как в CI и build.ps1: иначе в бинарник попадают локальные пути.
+    try { & $go.Source build -trimpath -o $HostExe ./cmd/host } finally { Pop-Location }
   } else {
     throw "Host binary not found and Go is not installed. Either install Go 1.22+ and re-run, or download a prebuilt release from GitHub."
   }
