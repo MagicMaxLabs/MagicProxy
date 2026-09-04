@@ -155,7 +155,10 @@ jobs:
             $h = (Get-FileHash $f -Algorithm SHA256).Hash.ToLower()
             "$h  $(Split-Path $f -Leaf)"
           }
-          $lines | Out-File -FilePath SHA256SUMS.txt -Encoding ascii
+          # LF, not CRLF: Out-File writes Windows line endings, and `sha256sum -c`
+          # on Linux/Git Bash then reports every file as "No such file" — the one
+          # tool people actually use to verify a download must accept the file.
+          [System.IO.File]::WriteAllText((Join-Path (Get-Location) "SHA256SUMS.txt"), (($lines -join "`n") + "`n"), (New-Object System.Text.ASCIIEncoding))
           Get-Content SHA256SUMS.txt
 
       # Cryptographic build provenance. On the Free plan this is available for
