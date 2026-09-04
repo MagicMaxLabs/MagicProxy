@@ -20,7 +20,9 @@
 AppId={{8B3F3573-6742-45CA-B2C1-0B908AC616D8}
 AppName={#AppName}
 AppVersion={#AppVersion}
-AppPublisher=MagicProxy
+AppPublisher=MagicMax Labs
+AppPublisherURL=https://github.com/MagicMaxLabs/MagicProxy
+AppSupportURL=https://github.com/MagicMaxLabs/MagicProxy/issues
 DefaultDirName={localappdata}\{#AppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest

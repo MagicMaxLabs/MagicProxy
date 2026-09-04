@@ -165,7 +165,11 @@ async function applyProxyFor(port) {
       proxyDomains: routing.proxyDomains || [],
       directDomains: routing.directDomains || [],
     },
-    bypass: routing.bypass || [],
+    // «Всегда напрямую» действует в ОБОИХ режимах. Раньше в режиме «весь
+    // трафик» bypassList брался из routing.bypass, которое не редактирует ни один
+    // экран, — и исключения пользователя молча переставали работать при смене
+    // режима. Синтаксис bypassList Chrome понимает те же «*.ru».
+    bypass: [...(routing.bypass || []), ...(routing.directDomains || [])],
   });
   // Туннель работает, а WebRTC-защиту держит кто-то другой с другой политикой —
   // редкий конфликт с другим privacy-расширением. Туннель из-за этого не рвём,
@@ -194,6 +198,9 @@ async function startCore(profile, desiredPort) {
     logLevel: "warn",
   });
   if (!result.port) throw new Error("host did not return a listen port");
+  // Каждый старт ядра оставляет след в «Логах ядра»: по этим строкам видно,
+  // перезапускался ли туннель за спиной у пользователя (см. также uptime в попапе).
+  pushLog(t("logCoreStarted", [profile.name || profile.server, String(result.port)]), "info");
   return result.port;
 }
 
@@ -346,7 +353,7 @@ async function doReconcile(startEpoch = intentEpoch) {
 // --- public actions ---------------------------------------------------------
 export async function enable(profileId) {
   const id = profileId || (await getActiveProfileId());
-  if (!id) throw new Error("не выбран профиль");
+  if (!id) throw new Error(t("errNoProfile"));
   state.lastError = null;
   await setDesired({ on: true, profileId: id });
   try {
@@ -453,11 +460,17 @@ async function getState() {
   }
   let running = false;
   let port = desired.port;
+  // uptime ядра — единственный честный индикатор того, что туннель НЕ
+  // перезапускался: если воркер MV3 всё же умирает между будильниками, ядро
+  // умирает вместе с хостом, и uptime обнуляется. Попап показывает его рядом с
+  // портом — час непрерывного счёта и есть доказательство живучести.
+  let uptimeSec = 0;
   if (desired.on) {
     try {
       const s = await native.status();
       running = !!(s && s.running);
       if (s && s.port) port = s.port;
+      if (s && s.uptimeSec) uptimeSec = s.uptimeSec;
     } catch (_) {
       running = false;
     }
@@ -493,6 +506,7 @@ async function getState() {
     running,
     healing: desired.on && !running,
     port,
+    uptimeSec,
     activeProfileId: desired.profileId,
     foreignProxy,
     lastError: state.lastError,
@@ -504,13 +518,17 @@ onEvent(async (evt) => {
   if (evt.event === "log") {
     pushLog(evt.payload.line, evt.payload.level);
   } else if (evt.event === "state") {
-    // sing-box reported it stopped. If the user still wants it on, leave the
-    // proxy in place (fail-closed) and let the next reconcile restart it.
+    // sing-box reported it stopped unexpectedly (deliberate stops emit nothing).
+    // The proxy stays pointed at the dead port (fail-closed) — and instead of
+    // waiting up to 30 s for the keepalive alarm, restart right now: half a
+    // minute without internet was the whole cost of a core crash.
     if (evt.payload && evt.payload.running === false) {
       const desired = await getDesired();
       if (desired.on) {
         setBadge(false, true);
         await persistRuntime(false, desired.port);
+        pushLog(t("logCoreExited", [evt.payload.error || ""]), "error");
+        reconcileInBackground();
       }
     }
   } else if (evt.event === "disconnected") {

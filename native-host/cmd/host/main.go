@@ -216,7 +216,8 @@ func handle(conn *messaging.Conn, mgr *core.Manager, req *messaging.Request) {
 
 	case "updateCore":
 		if !updateBusy.CompareAndSwap(false, true) {
-			_ = conn.RespondError(req.ID, errors.New("обновление уже выполняется"))
+			// Stable string: options.js recognizes it and shows a translation.
+			_ = conn.RespondError(req.ID, errors.New("core update already in progress"))
 			return
 		}
 		go func(id string) {

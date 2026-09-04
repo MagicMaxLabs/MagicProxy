@@ -127,7 +127,13 @@ function renderState(s) {
     el.statusLine.textContent = t("errPrefix", [humanError(s.lastError)]);
     el.statusLine.className = "status status--err";
   } else if (desiredOn && s.running) {
-    el.statusLine.textContent = t("statusActive", [String(s.port)]);
+    // hh:mm:ss — без единиц, чтобы не локализовать «мин»/«ч». Растущий счётчик
+    // и есть доказательство, что ядро не перезапускалось за спиной у пользователя.
+    const u = Number(s.uptimeSec) || 0;
+    const hhmmss = [Math.floor(u / 3600), Math.floor((u % 3600) / 60), u % 60]
+      .map((n) => String(n).padStart(2, "0"))
+      .join(":");
+    el.statusLine.textContent = t("statusActive", [String(s.port), hhmmss]);
     el.statusLine.className = "status status--on";
   } else if (s.healing) {
     el.statusLine.textContent = t("statusHealing");
@@ -241,9 +247,15 @@ el.hostStatus.addEventListener("click", () => {
   await refreshHostStatus();
   await loadProfiles();
   await refreshState();
-  await refreshLogs();
+  // Логи — только когда панель раскрыта: свёрнутая тянула 200 строк каждые две
+  // секунды впустую. При раскрытии подтягиваем сразу, дальше — с опросом.
+  const logsPanel = el.logView.closest("details");
+  logsPanel.addEventListener("toggle", () => {
+    if (logsPanel.open) refreshLogs();
+  });
+  if (logsPanel.open) await refreshLogs();
   setInterval(() => {
     refreshState();
-    if (desiredOn) refreshLogs();
+    if (desiredOn && logsPanel.open) refreshLogs();
   }, 2000);
 })();

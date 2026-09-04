@@ -20,25 +20,14 @@ jobs:
     # tag in a compromised action repo must not be able to change what builds
     # our releases. The comment keeps the human-readable version.
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.22"
+          go-version: "1.26"
           # The host has no third-party dependencies, so there is no go.sum and
           # nothing to cache. Without this, every run logs a "cache failed" warning.
           cache: false
-
-      # The quality gate this workflow never had: vet and the existing tests.
-      - name: Vet and test native host
-        shell: pwsh
-        run: |
-          Push-Location native-host
-          go vet ./...
-          if ($LASTEXITCODE -ne 0) { throw "go vet failed" }
-          go test ./...
-          if ($LASTEXITCODE -ne 0) { throw "go test failed" }
-          Pop-Location
 
       # Everything downstream stamps this version, so it is derived once, here.
       # Without it every release reported 0.1.0 — and the Chrome Web Store rejects
@@ -103,6 +92,20 @@ jobs:
             throw "sing-box reports '$reported' but $tag was pinned"
           }
 
+      # Quality gate — deliberately AFTER the core download: config_test.go runs
+      # every protocol config through the real `sing-box check`, and skips itself
+      # when the binary is absent. Before the download this step was green while
+      # testing nothing.
+      - name: Vet and test native host
+        shell: pwsh
+        run: |
+          Push-Location native-host
+          go vet ./...
+          if ($LASTEXITCODE -ne 0) { throw "go vet failed" }
+          go test ./...
+          if ($LASTEXITCODE -ne 0) { throw "go test failed" }
+          Pop-Location
+
       - name: Compile Inno Setup installer
         shell: pwsh
         run: |
@@ -160,14 +163,14 @@ jobs:
       # otherwise the whole release job would fail on a test tag.
       - name: Attest build provenance
         if: ${{ !github.event.repository.private }}
-        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018 # v1
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
             installer/Output/MagicProxy-Setup.exe
             MagicProxy-windows-amd64.zip
 
       - name: Publish release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           files: |
             installer/Output/MagicProxy-Setup.exe

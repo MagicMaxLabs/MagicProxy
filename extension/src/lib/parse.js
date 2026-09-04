@@ -140,7 +140,9 @@ function splitCred(cred) {
   // обязан содержать «метод:пароль».
   if (!dec || !dec.includes(":")) dec = decodeURIComponent(cred);
   const i = dec.indexOf(":");
-  if (i < 0) throw new Error("shadowsocks: userinfo без «метод:пароль»");
+  // Ошибки парсера показываются пользователю как есть — по-английски, как и
+  // остальные технические сообщения.
+  if (i < 0) throw new Error("shadowsocks: userinfo is not method:password");
   return [dec.slice(0, i), dec.slice(i + 1)];
 }
 

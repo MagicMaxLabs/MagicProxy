@@ -52,12 +52,12 @@
           <option value="rules" data-i18n="routingModeRules">По правилам (PAC)</option>
         </select>
       </div>
-      <div id="rulesFields">
+      <div id="proxyOnlyFields">
         <label class="hint" data-i18n="proxyDomainsLabel">Через прокси только эти домены (по одному на строку; пусто = всё кроме direct-списка):</label>
         <textarea id="proxyDomains" rows="3" placeholder="example.com&#10;*.youtube.com"></textarea>
-        <label class="hint" data-i18n="directDomainsLabel">Всегда напрямую (bypass):</label>
-        <textarea id="directDomains" rows="3" placeholder="*.ru&#10;localhost"></textarea>
       </div>
+      <label class="hint" data-i18n="directDomainsLabel">Всегда напрямую, в любом режиме (bypass):</label>
+      <textarea id="directDomains" rows="3" placeholder="*.ru&#10;localhost"></textarea>
       <div class="actions">
         <button id="saveRoutingBtn" data-i18n="saveRoutingBtn">Сохранить маршрутизацию</button>
         <span id="routingResult" class="hint"></span>

@@ -298,8 +298,10 @@ async function loadRouting() {
   toggleRulesFields();
 }
 
+// «Всегда напрямую» действует в обоих режимах (см. applyProxyFor), поэтому поле
+// видно всегда; от режима зависит только список «через прокси».
 function toggleRulesFields() {
-  $("rulesFields").style.display =
+  $("proxyOnlyFields").style.display =
     $("routingMode").value === "rules" ? "block" : "none";
 }
 $("routingMode").addEventListener("change", toggleRulesFields);
@@ -353,7 +355,12 @@ $("updateCoreBtn").addEventListener("click", async () => {
     res.textContent = t("updDone", [resp.data.version]);
     res.className = "hint ok";
   } else {
-    res.textContent = t("errPrefix", [resp.error || t("updFailed")]);
+    // Хост отвечает стабильными английскими строками; те, что читает человек,
+    // переводим здесь.
+    const err = /core update already in progress/i.test(resp.error || "")
+      ? t("errUpdateBusy")
+      : resp.error || t("updFailed");
+    res.textContent = t("errPrefix", [err]);
     res.className = "hint bad";
     $("updateCoreBtn").disabled = false;
   }

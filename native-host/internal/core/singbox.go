@@ -180,6 +180,9 @@ func (m *Manager) Check(cfg []byte) error {
 	cmd := exec.Command(m.binPath, "check", "-c", path)
 	hideWindow(cmd)
 	out, err := cmd.CombinedOutput()
+	// Проверяемый профиль несёт те же пароли, что и рабочий конфиг; после check
+	// файлу на диске делать нечего.
+	_ = os.Remove(path)
 	if err != nil {
 		return fmt.Errorf("config invalid: %s", strings.TrimSpace(string(out)))
 	}

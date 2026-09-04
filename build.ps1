@@ -18,7 +18,7 @@ $ErrorActionPreference = "Stop"
 $Root = $PSScriptRoot
 
 if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-  throw "Go toolchain not found. Install Go 1.22+ from https://go.dev/dl/ (or 'winget install GoLang.Go'), then re-run."
+  throw "Go toolchain not found. Install Go 1.26+ from https://go.dev/dl/ (or 'winget install GoLang.Go'), then re-run."
 }
 
 $VendorBin = Join-Path $Root "vendor-bin"

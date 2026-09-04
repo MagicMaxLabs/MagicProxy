@@ -81,7 +81,7 @@ if (-not (Test-Path $HostExe)) {
     # -trimpath — как в CI и build.ps1: иначе в бинарник попадают локальные пути.
     try { & $go.Source build -trimpath -o $HostExe ./cmd/host } finally { Pop-Location }
   } else {
-    throw "Host binary not found and Go is not installed. Either install Go 1.22+ and re-run, or download a prebuilt release from GitHub."
+    throw "Host binary not found and Go is not installed. Either install Go 1.26+ and re-run, or download a prebuilt release from GitHub."
   }
 } else {
   Write-Step "host binary present"

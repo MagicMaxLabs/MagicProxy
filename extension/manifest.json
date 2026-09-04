@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "__MSG_extName__",
   "short_name": "MagicProxy",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "__MSG_extDescription__",
   "default_locale": "en",
   "minimum_chrome_version": "120",
@@ -28,7 +28,11 @@
       "128": "assets/icon128.png"
     }
   },
-  "options_page": "src/options/options.html",
+  "options_ui": {
+    "page": "src/options/options.html",
+    "open_in_tab": true
+  },
+  "homepage_url": "https://github.com/MagicMaxLabs/MagicProxy",
   "icons": {
     "16": "assets/icon16.png",
     "32": "assets/icon32.png",

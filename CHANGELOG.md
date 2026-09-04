@@ -5,6 +5,32 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.2.1] - 2026-09-04
+
+### Added
+- The popup shows the core's uptime next to the port, and every core start or
+  unexpected exit leaves a line in the core log — so a tunnel restarting behind
+  your back is visible instead of silent.
+- "Always direct" domains now apply in both routing modes; previously they were
+  honored only in rules mode.
+
+### Changed
+- An unexpected core exit triggers an immediate restart instead of waiting for
+  the 30-second self-check.
+- Core logs are fetched only while the log panel is open.
+- Native host built with Go 1.26; release actions pinned to current versions.
+- Installer publisher is now "MagicMax Labs" with project and support links.
+
+### Fixed
+- Three messages that stayed Russian for English users (no profile selected,
+  update already running, malformed Shadowsocks link).
+- The temporary file written by "Check config" (which contains the profile's
+  credentials) is now deleted right after the check.
+- The protocol config test battery actually runs in CI (it used to skip
+  because the core was downloaded after the test step).
+- Documentation that had drifted from the code: HOW-IT-WORKS (extension ID,
+  store packaging, onboarding, WebRTC), ARCHITECTURE, README privacy section.
+
 ## [0.2.0] - 2026-08-14
 
 ### Added
